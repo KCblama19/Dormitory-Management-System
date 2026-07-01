@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Django
+db.sqlite3
+
+# Environment variables
+.env
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Static files (if collected)
+staticfiles/
+
+# Logs
+*.log
+
+# CSV files
+student.csv
