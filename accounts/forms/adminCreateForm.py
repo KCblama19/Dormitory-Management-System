@@ -25,9 +25,14 @@ class UserAdminForm(forms.ModelForm):
             "staff_id",
             "email",
             "phone_number",
-            "is_verified",
+            "is_claimed",
             "date_of_birth",
         ]
+        widgets = {
+            "date_of_birth": forms.DateInput(
+                attrs={"type": "date"}
+            )
+        }
         
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -47,9 +52,9 @@ class UserAdminForm(forms.ModelForm):
         if date_of_birth: 
             age = get_user_age(date_of_birth)
             if age < valid_age:
-                return forms.ValidationError("User needs to 16 and above")
+                raise forms.ValidationError("User needs to 16 and above")
         else:
-            return forms.ValidationError("User date of birth is required")
+            raise forms.ValidationError("User date of birth is required")
         
         return date_of_birth
         
@@ -58,10 +63,10 @@ class UserAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         
         role = cleaned_data["role"]
-        student_id = cleaned_data["student_id"]
-        staff_id = cleaned_data["staff_id"]
-        email = self.clean_email()
-        date_of_birth = self.clean_date_of_birth()
+        student_id = cleaned_data.get("student_id")
+        staff_id = cleaned_data.get("staff_id")
+        email = cleaned_data.get("email")
+        date_of_birth = cleaned_data.get("date_of_birth")
         
         if role == User.UserType.STUDENT and not student_id:
             raise forms.ValidationError("Student id is required")
@@ -71,7 +76,7 @@ class UserAdminForm(forms.ModelForm):
         
         return cleaned_data
     
-    def save(self, commit=False):
+    def save(self, commit=True):
         user = super().save(commit=False)
         
         # -------------------

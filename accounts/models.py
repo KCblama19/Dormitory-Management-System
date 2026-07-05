@@ -29,6 +29,12 @@ class User(AbstractUser):
         STAFF = "SF", _("Staff")
         ADMIN = "AD", _("Administrator")
         
+    class AccountStatus(models.TextChoices):
+        ACTIVE = "active", _("Active")
+        LOCKED = "locked", _("Locked")
+        SUSPENDED = "suspended", _("Suspended")
+        
+        
     # -------------------------
     # Core Identity Fields
     # -------------------------
@@ -95,9 +101,14 @@ class User(AbstractUser):
     # Verification / Activation Fields
     # ---------------------------------
     
-    is_verified = models.BooleanField(
+    # accountStatus = models.CharField(
+    #     max_length=20,
+    #     choices=AccountStatus.choices
+    # )
+    
+    is_claimed = models.BooleanField(
         default=False,
-        help_text=_("Indicates whether the user has been verified"),
+        help_text=_("Indicates whether the user has claimed their account"),
     )
     
     # This field is used for claim-based verification

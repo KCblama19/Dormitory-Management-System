@@ -50,10 +50,10 @@ class LoginForm(forms.Form):
 
         # Check activation: This is for staff and student accounts
         # Account exists but not activated
-        if not user.is_active:
-            raise ValidationError(
-                "Account not activated. Please claim your account."
-                )
+        # if not user.is_claimed:
+        #     raise ValidationError(
+        #         "Account not activated. Please claim your account."
+        #         )
             
         # Attach authenticated user for use in view
         self.user = user

@@ -1,6 +1,5 @@
 from django.contrib.auth.models import BaseUserManager
 from django.utils.translation import gettext_lazy as _
-from django.contrib.auth import get_user_model
 from accounts.utils.identity import generate_internal_username
 import uuid
 
@@ -31,10 +30,8 @@ class UserManager(BaseUserManager):
         """
 
         if not username:
-            username = self.generate_internal_username()
+            username = generate_internal_username()
         
-        User = get_user_model()
-
         user = self.model(
             username=username, 
             **extra_fields)
@@ -67,21 +64,20 @@ class UserManager(BaseUserManager):
         if email:
             email = self.normalize_email(email)
             
-        User = get_user_model()
 
-        if extra_fields.get("role") in [User.UserType.ADMIN, User.UserType.STAFF]:
+        if extra_fields.get("role") in [self.model.UserType.ADMIN, self.model.UserType.STAFF]:
             raise ValueError(_("Use create_staff or create_superuser"))
 
-        extra_fields.setdefault("role", User.UserType.STUDENT)
-        extra_fields.setdefault("is_verified", False)
-        extra_fields.setdefault("is_active", False)
+        extra_fields.setdefault("role", self.model.UserType.STUDENT)
+        extra_fields.setdefault("is_claimed", False)
+        extra_fields.setdefault("is_active", True)
         
         """
         create a unique identifier 
         based on the user role
         ie: "Student_2g01h"
         """
-        username = self.generate_internal_username(User.UserType.STUDENT)
+        username = generate_internal_username(self.model.UserType.STUDENT)
         student_id = str(student_id).strip()
         date_of_birth = extra_fields.get("date_of_birth")
         if not date_of_birth:
@@ -108,11 +104,10 @@ class UserManager(BaseUserManager):
         if not staff_id:
             raise ValueError(_("Staff ID is required"))
         
-        User = get_user_model()
 
-        if extra_fields.get("role") == User.UserType.STUDENT:
+        if extra_fields.get("role") == self.model.UserType.STUDENT:
             raise ValueError(_("Use create_student for student creation"))
-        if extra_fields.get("role") == User.UserType.ADMIN:
+        if extra_fields.get("role") == self.model.UserType.ADMIN:
             raise ValueError(_("Use create_superuser for admin creation"))
         
         """
@@ -120,17 +115,17 @@ class UserManager(BaseUserManager):
         based on the user role
         ie: "Staff_2g01h"
         """
-        username = self.generate_internal_username(User.UserType.STAFF) # create a unique identifier 
+        username = generate_internal_username(self.model.UserType.STAFF) # create a unique identifier 
         email = self.normalize_email(email)
         staff_id = str(staff_id).strip()
         date_of_birth = extra_fields.get("date_of_birth")
         if not date_of_birth:
             raise ValueError(_("Date of birth is required for claim flow"))
 
-        extra_fields.setdefault("role", User.UserType.STAFF)
+        extra_fields.setdefault("role", self.model.UserType.STAFF)
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", False)
-        extra_fields.setdefault("is_active", False)
+        extra_fields.setdefault("is_active", True)
 
         user = self.create_user(
             username=username,
@@ -151,23 +146,22 @@ class UserManager(BaseUserManager):
 
         Compatible with Django's createsuperuser command.
         """
-        User = get_user_model()
 
         if not password:
             raise ValueError(_("Password is required"))
 
-        extra_fields["role"] = User.UserType.ADMIN
+        extra_fields["role"] = self.model.UserType.ADMIN
         extra_fields["is_staff"] = True
         extra_fields["is_superuser"] = True
         extra_fields["is_active"] = True
-        extra_fields["is_verified"] = True
+        extra_fields["is_claimed"] = True
         
         """
         create a unique identifier 
         based on the user role
         ie: "Admin_2g01h"
         """
-        username = username or self.generate_internal_username(User.UserType.ADMIN) 
+        username = username or generate_internal_username(self.model.UserType.ADMIN) 
         
         email = self.normalize_email(email) if email else None
         

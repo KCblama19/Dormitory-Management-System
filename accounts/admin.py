@@ -30,14 +30,14 @@ class UserAdmin(BaseUserAdmin):
         "student_id",
         "staff_id",
         "email",
-        "is_verified",
+        "is_claimed",
         "is_staff",
         "is_active",
     )
 
     list_filter = (
         "role",
-        "is_verified",
+        "is_claimed",
         "is_staff",
         "is_active",
     )
@@ -65,7 +65,7 @@ class UserAdmin(BaseUserAdmin):
         }),
 
         ("Verification", {
-            "fields": ("is_verified", "date_of_birth")
+            "fields": ("is_claimed", "date_of_birth")
         }),
 
         ("Permissions", {
@@ -113,7 +113,7 @@ class UserAdmin(BaseUserAdmin):
         Automatically generate a username if not provided.
 
         Why:
-        - Your system does NOT rely on username as real identity
+        - The system does NOT rely on username as real identity
         - So we generate a unique internal one
         """
 
