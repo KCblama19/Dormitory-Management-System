@@ -15,7 +15,7 @@ class MultiIdentifierBackend(ModelBackend):
     Fully compatible with Django's authentication system.
     """
     
-    def authenticate(self, request, username, password, **kwargs):
+    def authenticate(self, request, username=None, password=None, **kwargs):
         # Django now uses this method when authenticate is used.
         User = get_user_model()
         
@@ -25,22 +25,20 @@ class MultiIdentifierBackend(ModelBackend):
         identifier = username.strip()
         
         # Try to find a matching user
-        try:
-            user = User.objects.filter(
-                Q(student_id=identifier)|
-                Q(staff_id=identifier)|
-                Q(email__iexact=identifier)|
-                Q(phone_number=identifier)
-            ).first()
+        user = User.objects.filter(
+            Q(student_id=identifier)|
+            Q(staff_id=identifier)|
+            Q(email__iexact=identifier)|
+            Q(phone_number=identifier)
+        ).first()
                    
-            # If no user is found, perform a fake hash to prevent timing attacks
-            if user is None:
-                make_password(password)
-                return None
-        # Invalidate the form if multiple users are returned 
-        except User.MultipleObjectsReturned:
-            return None
+        # If no user is found, perform a fake hash to prevent timing attacks
+        if user is None:
+            make_password(password)
+            return None    
         
+        # Confirm the user password match the one in the database
+        # And they are also an active user.
         if user.check_password(password) and self.user_can_authenticate(user):
             return user 
         
