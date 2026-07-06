@@ -1,5 +1,6 @@
-from django.contrib.auth import login
-from django.views.generic import FormView
+from django.contrib.auth import login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import FormView, TemplateView, View
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -40,3 +41,13 @@ class LogInView(FormView):
         login(self.request, user)
         messages.success(self.request, "You are now signed in")
         return super().form_valid(form)
+    
+class DashBoardView(LoginRequiredMixin, TemplateView):
+    template_name="accounts/dashboard.html"
+    login_url=reverse_lazy("accounts:login")
+    
+class LogoutView(FormView):
+    def post(self, request, *args, **kwargs):
+        logout(request)
+        messages.success(request, "You have been sign out")
+        return redirect("landing_page") 

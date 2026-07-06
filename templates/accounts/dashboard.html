@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+
+<section class="mb-5">
+
+    <div class="hero-card overflow-hidden">
+
+        <div class="p-4 p-lg-5">
+
+            <div class="row align-items-center g-5">
+
+                <div class="col-xl-8">
+
+                    <span class="eyebrow mb-4">
+                        <i class="bi bi-person-badge"></i>
+                        {{ user.get_role_display }}
+                    </span>
+
+                    <h1 class="hero-title mb-3">
+                        Welcome back,
+                        {{ user.student_profile.full_name|default:user.username }}
+                    </h1>
+
+                    <p class="hero-copy mb-4">
+                        Manage housing activity, monitor account status,
+                        and continue the next important workflow step
+                        from your personalized dashboard.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-3">
+
+                        {% if user.is_student %}
+
+                            <a class="btn btn-primary btn-lg">
+                                <i class="bi bi-house-door me-2"></i>
+                                Housing portal
+                            </a>
+
+                            <a class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-person me-2"></i>
+                                Profile
+                            </a>
+
+                        {% endif %}
+
+                        {% if user.is_staff_member or user.is_admin_user %}
+
+                            <a class="btn btn-primary btn-lg">
+                                <i class="bi bi-grid me-2"></i>
+                                Staff portal
+                            </a>
+
+                            <a class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-clipboard-check me-2"></i>
+                                Reviews
+                            </a>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+                <div class="col-xl-4">
+
+                    <div class="dashboard-preview">
+
+                        <div class="row g-3">
+
+                            <div class="col-6">
+
+                                <div class="metric-card">
+
+                                    <div class="metric-label">
+                                        Verification
+                                    </div>
+
+                                    <div class="metric-value">
+
+                                        {% if user.is_claimed %}
+                                            Yes
+                                        {% else %}
+                                            No
+                                        {% endif %}
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-6">
+
+                                <div class="metric-card">
+
+                                    <div class="metric-label">
+                                        Notifications
+                                    </div>
+
+                                    <div class="metric-value">
+                                        
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="preview-table">
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                                <div class="fw-bold">
+                                    Account overview
+                                </div>
+
+                                {% if user.is_claimed %}
+                                    <span class="table-status approved">
+                                        Verified
+                                    </span>
+                                {% else %}
+                                    <span class="table-status pending">
+                                        Pending
+                                    </span>
+                                {% endif %}
+
+                            </div>
+
+                            <div class="preview-row">
+
+                                <div>
+                                    <div class="fw-semibold">
+                                        Primary contact
+                                    </div>
+
+                                    <small class="text-secondary">
+                                        
+                                    </small>
+                                </div>
+
+                            </div>
+
+                            <div class="preview-row">
+
+                                <div>
+                                    <div class="fw-semibold">
+                                        Account role
+                                    </div>
+
+                                    <small class="text-secondary">
+                                        {{ user.get_role_display }}
+                                    </small>
+                                </div>
+
+                            </div>
+
+                            <div class="mt-4">
+
+                                <div class="d-flex justify-content-between mb-2">
+
+                                    <small class="fw-semibold">
+                                        Profile completion
+                                    </small>
+
+                                    <small class="text-secondary">
+                                        78%
+                                    </small>
+
+                                </div>
+
+                                <div class="occupancy-bar">
+                                    <div class="occupancy-fill"></div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section class="mb-5">
+
+    <div class="row g-4">
+
+        <div class="col-md-4">
+
+            <div class="section-card p-4 h-100">
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+
+                    <div class="fs-2 text-success">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+
+                    {% if user.is_claimed %}
+                        <span class="status-pill">
+                            Active
+                        </span>
+                    {% else %}
+                        <span class="status-pill">
+                            Pending
+                        </span>
+                    {% endif %}
+
+                </div>
+
+                <div class="section-title mb-3">
+                    Verification status
+                </div>
+
+                <p class="section-copy mb-0">
+                    Your account verification state determines access
+                    to booking workflows, housing requests,
+                    and assignment actions.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="section-card p-4 h-100">
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+
+                    <div class="fs-2 text-success">
+                        <i class="bi bi-credit-card-2-front"></i>
+                    </div>
+
+                    <span class="status-pill">
+                        University ID
+                    </span>
+
+                </div>
+
+                <div class="section-title mb-3">
+                    Primary identifier
+                </div>
+
+                <p class="section-copy mb-3">
+
+                    {% if user.role == "student" %}
+                        {{ user.student_id|default:"No student ID assigned" }}
+                    {% else %}
+                        {{ user.staff_id|default:"No staff ID assigned" }}
+                    {% endif %}
+
+                </p>
+
+                <small class="text-secondary">
+                    Used throughout the housing allocation workflow.
+                </small>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="section-card p-4 h-100">
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+
+                    <div class="fs-2 text-success">
+                        <i class="bi bi-envelope-paper"></i>
+                    </div>
+
+                    <span class="status-pill">
+                        Contact
+                    </span>
+
+                </div>
+
+                <div class="section-title mb-3">
+                    Communication channel
+                </div>
+
+                <p class="section-copy mb-3">
+                    
+                </p>
+
+                <small class="text-secondary">
+                    Notifications and housing updates are sent here.
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section class="section-muted py-5 rounded-5 mb-5">
+
+    <div class="container">
+
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-4 mb-5">
+
+            <div>
+
+                <h2 class="fw-bold display-6 mb-3">
+                    Quick actions
+                </h2>
+
+                <p class="section-copy mb-0"
+                   style="max-width: 700px;">
+
+                    Continue important workflows,
+                    manage housing activity,
+                    and navigate directly to operational tools.
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="row g-4">
+
+            {% if user.role == "student" %}
+
+                <div class="col-lg-4">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-house-door"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Housing portal
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Review eligibility,
+                            submit room requests,
+                            and track booking activity.
+                        </p>
+
+                        <a class="btn btn-primary w-100">
+                            Open portal
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-people"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Roommate coordination
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Invite compatible roommates
+                            and manage roommate groups.
+                        </p>
+
+                        <a class="btn btn-outline-primary w-100">
+                            Open roommates
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-bell"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Notifications
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Stay informed about approvals,
+                            roommate activity,
+                            and assignment updates.
+                        </p>
+
+                        <a class="btn btn-outline-primary w-100">
+                            View notifications
+                        </a>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+            {% if user.role == "staff" or user.role == "admin" %}
+
+                <div class="col-lg-3">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-buildings"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Campus management
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Configure campuses,
+                            buildings,
+                            and room inventory.
+                        </p>
+
+                        <a class="btn btn-primary w-100">
+                            Open campuses
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-door-open"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Room operations
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Monitor occupancy,
+                            assignments,
+                            and room capacity.
+                        </p>
+
+                        <a class="btn btn-outline-primary w-100"></a>
+                            Open rooms
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-clipboard-check"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Booking reviews
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Review requests,
+                            approve applications,
+                            and resolve conflicts.
+                        </p>
+
+                        <a class="btn btn-outline-primary w-100"
+                           href="{% url 'staff_portal:booking-reviews' %}">
+                            Open reviews
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3">
+
+                    <div class="section-card p-4 h-100">
+
+                        <div class="mb-4 fs-2 text-success">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+
+                        <div class="section-title mb-3">
+                            Audit activity
+                        </div>
+
+                        <p class="section-copy mb-4">
+                            Track operational events,
+                            changes,
+                            and assignment activity.
+                        </p>
+
+                        <a class="btn btn-outline-primary w-100"
+                           href="{% url 'audit:activity' %}">
+                            Open audit
+                        </a>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</section>
+
+{% if user.has_delegate_scope %}
+
+<section class="mb-5">
+
+    <div class="section-card p-4 p-lg-5">
+
+        <div class="row align-items-center g-4">
+
+            <div class="col-lg-8">
+
+                <span class="eyebrow mb-3">
+                    <i class="bi bi-person-workspace"></i>
+                    Delegate scope enabled
+                </span>
+
+                <h2 class="fw-bold mb-3">
+                    Delegate housing operations
+                </h2>
+
+                <p class="section-copy mb-0">
+                    You currently have authorization
+                    to submit and manage housing activity
+                    on behalf of assigned students,
+                    campuses,
+                    or country groups.
+                </p>
+
+            </div>
+
+            <div class="col-lg-4 text-lg-end">
+
+                <a class="btn btn-primary btn-lg"
+                   href="{% url 'delegates:portal' %}">
+
+                    Open delegate desk
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Claim Account{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-6 col-lg-7">
+        <div class="hero-card card">
+            <div class="card-body p-4 p-lg-5">
+                <span class="eyebrow mb-3">First-time activation</span>
+                <h1 class="page-heading mb-2">Claim your account</h1>
+                <p class="section-copy mb-4">
+                    Use your university identifier and date of birth to verify your identity and set your password.
+                </p>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                    <button class="btn btn-primary w-100 mt-2" type="submit">Activate account</button>
+                </form>
+                <div class="soft-divider"></div>
+                <p class="section-copy mb-0">
+                    Already activated?
+                    <a class="fw-semibold" href="{% url 'accounts:login' %}">Sign in instead</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

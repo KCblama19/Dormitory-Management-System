@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}
+Dormitory Manager
+{% endblock %}
+
+{% block content %}
+
+<section class="mb-5">
+
+    <div class="hero-card overflow-hidden">
+
+        <div class="p-4 p-lg-5">
+
+            <div class="row align-items-center g-5">
+
+                <div class="col-xl-7">
+
+                    <span class="eyebrow mb-4">
+                        <i class="bi bi-buildings"></i>
+                        Multi-campus housing workflow
+                    </span>
+
+                    <h1 class="hero-title mb-4">
+                        A cleaner way to manage student housing before arrival.
+                    </h1>
+
+                    <p class="hero-copy mb-4">
+                        Dormitory Manager helps universities manage housing requests,
+                        roommate coordination, approvals, waitlists, and room assignments
+                        across multiple campuses in one structured system.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-3">
+
+                        <a class="btn btn-primary btn-lg">
+                            Claim account
+                        </a>
+
+                        <a class="btn btn-outline-primary btn-lg"
+                           href="{% url 'accounts:login' %}">
+                            Sign in
+                        </a>
+
+                    </div>
+                </div>
+
+                <div class="col-xl-5">
+
+                    <div class="dashboard-preview">
+
+                        <div class="row g-3">
+
+                            <div class="col-6">
+
+                                <div class="metric-card">
+
+                                    <div class="metric-label">
+                                        Pending reviews
+                                    </div>
+
+                                    <div class="metric-value">
+                                        18
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+
+                                <div class="metric-card">
+
+                                    <div class="metric-label">
+                                        Occupancy
+                                    </div>
+
+                                    <div class="metric-value">
+                                        78%
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-table">
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                                <div class="fw-bold">
+                                    Recent requests
+                                </div>
+
+                                <div class="status-pill">
+                                    Live workflow
+                                </div>
+
+                            </div>
+
+                            <div class="preview-row">
+
+                                <div>
+                                    <div class="fw-semibold">
+                                        East Campus
+                                    </div>
+
+                                    <small class="text-secondary">
+                                        Double Room
+                                    </small>
+                                </div>
+
+                                <span class="table-status pending">
+                                    Pending
+                                </span>
+
+                            </div>
+
+                            <div class="preview-row">
+
+                                <div>
+                                    <div class="fw-semibold">
+                                        North Residence
+                                    </div>
+
+                                    <small class="text-secondary">
+                                        Triple Room
+                                    </small>
+                                </div>
+
+                                <span class="table-status approved">
+                                    Approved
+                                </span>
+
+                            </div>
+
+                            <div class="mt-4">
+
+                                <div class="d-flex justify-content-between mb-2">
+
+                                    <small class="fw-semibold">
+                                        Campus occupancy
+                                    </small>
+
+                                    <small class="text-secondary">
+                                        78%
+                                    </small>
+
+                                </div>
+
+                                <div class="occupancy-bar">
+                                    <div class="occupancy-fill"></div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section class="section-muted py-5 rounded-5 mb-5">
+
+    <div class="container">
+
+        <div class="text-center mb-5">
+
+            <h2 class="fw-bold display-6 mb-3">
+                Built around the actual housing workflow
+            </h2>
+
+            <p class="section-copy mx-auto"
+               style="max-width: 720px;">
+
+                A structured allocation process for students,
+                delegates, housing teams, and campus administrators.
+
+            </p>
+
+        </div>
+
+        <div class="row g-4">
+
+            <div class="col-md-6 col-xl-4">
+
+                <div class="section-card p-4">
+
+                    <div class="mb-3 fs-2 text-success">
+                        <i class="bi bi-person-check"></i>
+                    </div>
+
+                    <div class="section-title mb-3">
+                        1. Student onboarding
+                    </div>
+
+                    <p class="section-copy mb-0">
+                        Students activate pre-created accounts remotely,
+                        verify identity details, and prepare their housing
+                        profile before arrival.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-6 col-xl-4">
+
+                <div class="section-card p-4">
+
+                    <div class="mb-3 fs-2 text-success">
+                        <i class="bi bi-people"></i>
+                    </div>
+
+                    <div class="section-title mb-3">
+                        2. Roommate coordination
+                    </div>
+
+                    <p class="section-copy mb-0">
+                        Students can invite roommates,
+                        create groups, and coordinate shared room requests
+                        before final assignment.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-6 col-xl-4">
+
+                <div class="section-card p-4">
+
+                    <div class="mb-3 fs-2 text-success">
+                        <i class="bi bi-house-check"></i>
+                    </div>
+
+                    <div class="section-title mb-3">
+                        3. Housing allocation
+                    </div>
+
+                    <p class="section-copy mb-0">
+                        Staff review requests,
+                        manage occupancy,
+                        reserve capacity,
+                        and approve room assignments efficiently.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section>
+
+    <div class="row g-4">
+
+        <div class="col-lg-4">
+
+            <div class="section-card p-4">
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+
+                    <div class="fw-bold fs-5">
+                        Campus operations
+                    </div>
+
+                    <div class="status-pill">
+                        Active
+                    </div>
+
+                </div>
+
+                <p class="section-copy">
+                    Manage buildings, floors, room generation,
+                    availability, and occupancy from one centralized platform.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="section-card p-4">
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+
+                    <div class="fw-bold fs-5">
+                        Review workflow
+                    </div>
+
+                    <div class="status-pill">
+                        Structured
+                    </div>
+
+                </div>
+
+                <p class="section-copy">
+                    Pending requests reserve capacity immediately,
+                    while staff maintain approval authority
+                    across campuses and housing groups.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-4">
+
+            <div class="section-card p-4">
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+
+                    <div class="fw-bold fs-5">
+                        Import system
+                    </div>
+
+                    <div class="status-pill">
+                        Automated
+                    </div>
+
+                </div>
+
+                <p class="section-copy">
+                    Bulk import students,
+                    validate records,
+                    provision accounts,
+                    and reduce manual onboarding work.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+{% endblock %}

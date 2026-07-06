@@ -25,9 +25,9 @@ class User(AbstractUser):
     """
 
     class UserType(models.TextChoices):
-        STUDENT = "ST", _("Student")
-        STAFF = "SF", _("Staff")
-        ADMIN = "AD", _("Administrator")
+        STUDENT = "STUDENT", _("Student")
+        STAFF = "STAFF", _("Staff")
+        ADMIN = "ADMIN", _("Administrator")
         
     class AccountStatus(models.TextChoices):
         ACTIVE = "active", _("Active")
@@ -92,7 +92,7 @@ class User(AbstractUser):
 
     # Role determines user behavior and permissions
     role = models.CharField(
-        max_length=2,
+        max_length=20,
         choices=UserType.choices,
         help_text=_("Designates the role and permission of the user in the system"),
     )
@@ -165,6 +165,17 @@ class User(AbstractUser):
             return f"Staff {self.staff_id} ({self.email})"
         
         return f"Admin {self.staff_id} ({self.email})"
+    
+    # Return True or False for the user role 
+    @property
+    def is_student(self):
+        return self.role == self.UserType.STUDENT
+    @property
+    def is_staff_member(self):
+        return self.role == self.UserType.STAFF
+    @property
+    def is_admin_user(self):
+        return self.role == self.UserType.ADMIN
     
     @property
     def primary_identifier(self):
