@@ -16,11 +16,11 @@
     --dm-warning: #dd9b22;
     --dm-danger: #c44545;
 
-    --dm-shadow-sm: 0 8px 20px rgba(15, 23, 20, 0.04);
+    --dm-shadow-sm: 0 0px 0px rgba(15, 23, 20, 0.04);
 
-    --dm-shadow-md: 0 18px 40px rgba(15, 23, 20, 0.07);
+    --dm-shadow-md: 0 0px 0px rgba(15, 23, 20, 0.07);
 
-    --dm-shadow-lg: 0 28px 80px rgba(15, 23, 20, 0.10);
+    --dm-shadow-lg: 0 0px 0px rgba(15, 23, 20, 0.10);
 
     --dm-radius-xl: 28px;
     --dm-radius-lg: 22px;

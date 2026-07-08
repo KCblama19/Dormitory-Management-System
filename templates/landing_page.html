@@ -30,19 +30,85 @@ Dormitory Manager
                         roommate coordination, approvals, waitlists, and room assignments
                         across multiple campuses in one structured system.
                     </p>
+                    
+                    <!-- Display the appropriate actions based on the user's
+                         authentication status, account claim status, and role.
+                    -->
+                    {% if request.user.is_authenticated %}
 
-                    <div class="d-flex flex-wrap gap-3">
+                        <!-- Check if the user have claim their account -->
 
-                        <a class="btn btn-primary btn-lg">
-                            Claim account
-                        </a>
+                        {% if not request.user.is_claimed %}
+                            <div class="d-flex flex-wrap gap-3">
 
-                        <a class="btn btn-outline-primary btn-lg"
-                           href="{% url 'accounts:login' %}">
-                            Sign in
-                        </a>
+                                <a class="btn btn-primary btn-lg">
+                                    Claim account
+                                </a>
 
-                    </div>
+                                <a class="btn btn-outline-primary btn-lg"
+                                href="{% url 'accounts:dashboard' %}">
+                                    Dashboard
+                                </a>
+                            </div>
+                        
+                        <!-- Check the user role -->
+
+                        {% elif request.user.is_admin_user or request.user.is_staff_member %}
+
+                            <div class="d-flex flex-wrap gap-3">
+                                <a class="btn btn-primary btn-lg"
+                                   href="{% url 'accounts:dashboard' %}">
+                                    Dashboard
+                                </a>
+
+                                <a class="btn btn-outline-primary btn-lg"
+                                   href="">
+                                    Admin Center
+                                </a>
+
+                            </div>
+                        
+                        {% elif request.user.is_student %}
+                            <div class="d-flex flex-wrap gap-3">
+                                <a class="btn btn-primary btn-lg"
+                                    href="">
+                                    Browse Rooms
+                                </a>
+
+                                <a class="btn btn-outline-primary btn-lg"
+                                    href="">
+                                    Dashboard
+                                </a>
+                            </div>
+                        
+                        
+                        {% else %}
+
+                        <div class="container">
+
+                                <div class="mb-4">
+                                    <p class="alert alert-info">UnKnown account type</p>
+                                </div>
+
+                        </div>
+
+                        {% endif %}
+
+                    {% else %}
+                        <div class="d-flex flex-wrap gap-3">
+
+                            <a class="btn btn-primary btn-lg">
+                                Claim account
+                            </a>
+
+                            <a class="btn btn-outline-primary btn-lg"
+                            href="{% url 'accounts:login' %}">
+                                Sign in
+                            </a>
+                        </div>
+
+                    {% endif %}
+   
                 </div>
 
                 <div class="col-xl-5">

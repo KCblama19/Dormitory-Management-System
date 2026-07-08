@@ -75,33 +75,31 @@
             <!-- DESKTOP NAV -->
             <div class="desktop-nav d-flex align-items-center gap-2 flex-wrap">
 
+                <!-- Render the Navbar based on the user role [Student, Admin, Staff, Delegate] -->
                 {% if request.user.is_authenticated %}
 
-                    {% if request.user.role == "student" %}
+                    {% if request.user.is_student %}
 
                         <a class="nav-chip">
                             <i class="bi bi-person"></i>
                             Profile
-
                         </a>
 
                         <a class="nav-chip">
                             <i class="bi bi-house-door"></i>
                             Housing
-
                         </a>
 
                         <a class="nav-chip">
                             <i class="bi bi-people"></i>
                             Roommates
-
                         </a>
 
                     {% endif %}
 
 
 
-                    {% if request.user.role == "staff" or request.user.role == "admin" %}
+                    {% if request.user.is_admin_user or request.user.is_staff_member %}
 
                         <div class="dropdown">
 
@@ -174,14 +172,12 @@
 
                     {% endif %}
 
-
-
+                    <!--Fallback to this if the user does not have a role instead of failing-->
                     <a class="btn btn-primary">
                         Dashboard
                     </a>
 
-
-
+                    <!-- Display the Logout button -->
                     <form action="{% url 'accounts:logout' %}"
                           method="post">
 
@@ -196,6 +192,7 @@
 
                 {% else %}
 
+                <!-- Show claim account if the user is not authenticated -->
                     <a class="nav-chip">
                         Claim account
                     </a>
@@ -248,19 +245,16 @@
             {% if request.user.is_authenticated %}
 
                 <a class="nav-chip">
-                   
                     Dashboard
                 </a>
 
-                <a class="nav-chip">
-                   
+                <a class="nav-chip">                 
                     Notifications
                 </a>
 
             {% else %}
 
-                <a class="nav-chip"></a>
-                   
+                <a class="nav-chip"></a>                  
                     Claim account
                 </a>
 

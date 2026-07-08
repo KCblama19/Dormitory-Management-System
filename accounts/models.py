@@ -166,7 +166,7 @@ class User(AbstractUser):
         
         return f"Admin {self.staff_id} ({self.email})"
     
-    # Return True or False for the user role 
+    # Return True or False based on the user role 
     @property
     def is_student(self):
         return self.role == self.UserType.STUDENT
