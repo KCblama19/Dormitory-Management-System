@@ -224,9 +224,9 @@
 
 
     <!-- MOBILE MENU -->
-    <div class="offcanvas offcanvas-end"
-         tabindex="-1"
-         id="mobileMenu">
+    <div class="offcanvas offcanvas-end mt-4"
+     tabindex="-1"
+     id="mobileMenu">
 
         <div class="offcanvas-header">
 
@@ -236,7 +236,8 @@
 
             <button type="button"
                     class="btn-close"
-                    data-bs-dismiss="offcanvas"></button>
+                    data-bs-dismiss="offcanvas">
+            </button>
 
         </div>
 
@@ -244,22 +245,94 @@
 
             {% if request.user.is_authenticated %}
 
-                <a class="nav-chip">
+                {# Student navigation #}
+                {% if request.user.is_student %}
+
+                    <a class="nav-chip">
+                        <i class="bi bi-person"></i>
+                        Profile
+                    </a>
+
+                    <a class="nav-chip">
+                        <i class="bi bi-house-door"></i>
+                        Housing
+                    </a>
+
+                    <a class="nav-chip">
+                        <i class="bi bi-people"></i>
+                        Roommates
+                    </a>
+
+                {% endif %}
+
+
+                {# Staff/Admin navigation #}
+                {% if request.user.is_admin_user or request.user.is_staff_member %}
+
+                    <a class="nav-chip">
+                        Dashboard
+                    </a>
+
+                    <a class="nav-chip">
+                        Campuses
+                    </a>
+
+                    <a class="nav-chip">
+                        Students
+                    </a>
+
+                    <a class="nav-chip">
+                        Rooms
+                    </a>
+
+                    <a class="nav-chip">
+                        Floors
+                    </a>
+
+                    <a class="nav-chip">
+                        Reviews
+                    </a>
+
+                    <a class="nav-chip">
+                        Waitlist
+                    </a>
+
+                    <a class="nav-chip">
+                        Imports
+                    </a>
+
+                    <a class="nav-chip">
+                        Audit
+                    </a>
+
+                {% endif %}
+
+
+                {# Fallback #}
+                <a class="btn btn-primary">
                     Dashboard
                 </a>
 
-                <a class="nav-chip">                 
-                    Notifications
-                </a>
+                <form action="{% url 'accounts:logout' %}"
+                    method="post">
+
+                    {% csrf_token %}
+
+                    <button type="submit"
+                            class="btn btn-outline-danger w-100">
+                        Logout
+                    </button>
+
+                </form>
 
             {% else %}
 
-                <a class="nav-chip"></a>                  
+                <a class="nav-chip">
                     Claim account
                 </a>
 
                 <a class="btn btn-primary"
-                   href="{% url 'accounts:login' %}">
+                href="{% url 'accounts:login' %}">
                     Sign in
                 </a>
 

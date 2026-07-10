@@ -445,6 +445,17 @@ a {
     color: var(--dm-success);
 }
 
+/* Alert */
+
+.alert-info {
+    background: rgba(31, 111, 92, 0.08);
+    color: var(--dm-primary);
+    border: 1px solid rgba(31, 111, 92, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
 /* OCCUPANCY */
 
 .occupancy-bar {
