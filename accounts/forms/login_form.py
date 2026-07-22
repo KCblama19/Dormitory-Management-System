@@ -16,7 +16,7 @@ class LoginForm(forms.Form):
         self.request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
     
-    identifier = forms.CharField()
+    identifier = forms.CharField(required=True)
     password = forms.CharField(widget=forms.PasswordInput)
 
     def clean_identifier(self):

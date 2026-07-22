@@ -1,0 +1,69 @@
+Student visits website
+        │
+        ▼
+Clicks "Claim Account"
+        │
+        ▼
+Enter:
+• Student ID (or University Email)
+• Temporary Password
+        │
+        ▼
+System verifies information against
+pre-created university student records
+• Student exists
+• Credentials match
+• Account has not already been claimed
+        │
+   ┌────┴────┐
+   │           │
+Invalid     Valid
+   │           │
+Show Error     ▼
+            Identity Verification
+            (Enter Date of Birth)
+               │
+               ▼
+      	    DOB matches records?
+                │
+      ┌───────┴────────┐
+      │                │
+   Incorrect        Correct
+      │                │
+ Show Error            ▼
+                    Change Password
+              	       │
+                       ▼
+      		    Student enters
+      		    • New Password
+      	   	    • Confirm Password
+                       │
+                       ▼
+              Validate Password Rules
+              	       │
+      	     ┌───────┴────────┐
+             │                │
+           Invalid           Valid
+             │                │
+        Show Error            ▼
+      			Update Password
+      			Mark Account as Claimed = True
+      			Mark Account as Active = True
+      			Invalidate Temporary Password
+              	              │
+              	              ▼
+      			Display Success Message
+      			"Your account has been activated.
+       			Please sign in using your new password."
+                       	      │
+                              ▼
+                          Login Page
+                              │
+                              ▼
+                        Student logs in normally
+                              │
+                              ▼
+			Django authenticates user
+                              │
+                              ▼
+                        Student Dashboard

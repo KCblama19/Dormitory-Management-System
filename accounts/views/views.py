@@ -5,7 +5,16 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.contrib import messages
 from accounts.forms.login_form import LoginForm
+from ..forms.claim_forms import VerifyUserCredentialsForm, VerifyUserIdentityForm, UpdateUserPasswordForm
+from ..services.claim_service import verifyUserCredentials, verifyUserIdentity, updateUserPassword
 
+class DashBoardView(LoginRequiredMixin, TemplateView):
+    template_name="accounts/dashboard.html"
+    login_url=reverse_lazy("accounts:login")
+
+class ClaimFlowView(LoginRequiredMixin, FormView):
+    
+        
 class LogInView(FormView):
     """
     Validation and Authentication 
@@ -41,11 +50,7 @@ class LogInView(FormView):
         login(self.request, user)
         messages.success(self.request, "You are now signed in")
         return super().form_valid(form)
-    
-class DashBoardView(LoginRequiredMixin, TemplateView):
-    template_name="accounts/dashboard.html"
-    login_url=reverse_lazy("accounts:login")
-    
+        
 class LogoutView(FormView):
     def post(self, request, *args, **kwargs):
         logout(request)

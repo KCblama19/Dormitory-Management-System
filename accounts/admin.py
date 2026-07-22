@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from accounts.models import User
-from accounts.forms.adminCreateForm import UserAdminForm
+from accounts.forms.admin_form import UserAdminForm
 import uuid
 
 
