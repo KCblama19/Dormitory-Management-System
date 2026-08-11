@@ -78,6 +78,7 @@
                 <!-- Render the Navbar based on the user role [Student, Admin, Staff, Delegate] -->
                 {% if request.user.is_authenticated %}
 
+                    <!-- Render the navbar for students -->
                     {% if request.user.is_student %}
 
                         <a class="nav-chip">
@@ -98,7 +99,7 @@
                     {% endif %}
 
 
-
+                    <!-- Render the navbar for admin or staff members -->
                     {% if request.user.is_admin_user or request.user.is_staff_member %}
 
                         <div class="dropdown">
@@ -192,8 +193,9 @@
 
                 {% else %}
 
-                <!-- Show claim account if the user is not authenticated -->
-                    <a class="nav-chip">
+                <!-- Show claim account if the user has not claimed their account -->
+                    <a class="nav-chip"
+                        href="{% url 'accounts:verify-credentials' %}">
                         Claim account
                     </a>
 

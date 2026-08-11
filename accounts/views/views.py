@@ -12,7 +12,7 @@ class DashBoardView(LoginRequiredMixin, TemplateView):
     template_name="accounts/dashboard.html"
     login_url=reverse_lazy("accounts:login")
 
-class ClaimFlowView(LoginRequiredMixin, FormView):
+# class ClaimFlowView(LoginRequiredMixin, FormView):
     
         
 class LogInView(FormView):

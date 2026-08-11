@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Claim Account{% endblock %}
 
@@ -8,29 +9,65 @@
         <div class="hero-card card">
             <div class="card-body p-4 p-lg-5">
                 <span class="eyebrow mb-3">First-time activation</span>
-                <h1 class="page-heading mb-2">Claim your account</h1>
-                <p class="section-copy mb-4">
-                    Use your university identifier and date of birth to verify your identity and set your password.
-                </p>
-                <form method="post" novalidate>
-                    {% csrf_token %}
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                    {% endif %}
-                    {% for field in form %}
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.help_text %}
-                                <div class="form-text">{{ field.help_text }}</div>
+
+                <div class="claim-progress mb-4">
+
+                    <div class="claim-step {% if step == 'verify_credentials' %}active{% elif step == 'identity_verification' or step == 'set_password' %}completed{% endif %}">
+                        <div class="claim-step-circle">
+                            {% if step == 'identity_verification' or step == 'set_password' %}
+                                ✓
+                            {% else %}
+                                1
                             {% endif %}
-                            {% for error in field.errors %}
-                                <div class="text-danger small mt-1">{{ error }}</div>
-                            {% endfor %}
                         </div>
-                    {% endfor %}
-                    <button class="btn btn-primary w-100 mt-2" type="submit">Activate account</button>
-                </form>
+                        <span>Credentials</span>
+                    </div>
+
+                    <div class="claim-step-line"></div>
+
+                    <div class="claim-step {% if step == 'identity_verification' %}active{% elif step == 'set_password' %}completed{% endif %}">
+                        <div class="claim-step-circle">
+                            {% if step == 'set_password' %}
+                                ✓
+                            {% else %}
+                                2
+                            {% endif %}
+                        </div>
+                        <span>Identity</span>
+                    </div>
+
+                    <div class="claim-step-line"></div>
+
+                    <div class="claim-step {% if step == 'set_password' %}active{% endif %}">
+                        <div class="claim-step-circle">3</div>
+                        <span>Password</span>
+                    </div>
+
+                <h1 class="page-heading mb-2">{{ title }}</h1>
+                <p class="section-copy mb-4">
+                    Please Enter the userid and password that was sent by mail
+                </p>
+                {% if step == "verify_credentials" %}
+                    <form method="post" >
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <button class="btn btn-primary w-100 mt-2" type="submit">Activate account</button>
+                    </form>
+                {% endif %}
                 <div class="soft-divider"></div>
                 <p class="section-copy mb-0">
                     Already activated?
