@@ -1,18 +1,39 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_head %}
+
+<link rel="stylesheet"
+      href="{% static 'accounts/css/claim_account.css' %}">
+
+{% endblock %}
+
 {% block title %}Claim Account{% endblock %}
 
 {% block content %}
+
 <div class="row justify-content-center">
     <div class="col-xl-6 col-lg-7">
+
         <div class="hero-card card">
             <div class="card-body p-4 p-lg-5">
-                <span class="eyebrow mb-3">First-time activation</span>
 
+                <span class="eyebrow mb-3">
+                    First-time activation
+                </span>
+
+                <!-- Claim progress line -->
                 <div class="claim-progress mb-4">
 
-                    <div class="claim-step {% if step == 'verify_credentials' %}active{% elif step == 'identity_verification' or step == 'set_password' %}completed{% endif %}">
+                    <!-- Step 1: Credentials -->
+                    <div class="
+                        claim-step
+                        {% if step == 'verify_credentials' %}
+                            active
+                        {% elif step == 'identity_verification' or step == 'set_password' %}
+                            completed
+                        {% endif %}
+                    ">
                         <div class="claim-step-circle">
                             {% if step == 'identity_verification' or step == 'set_password' %}
                                 ✓
@@ -20,12 +41,24 @@
                                 1
                             {% endif %}
                         </div>
+
                         <span>Credentials</span>
                     </div>
 
+
+                    <!-- Connector -->
                     <div class="claim-step-line"></div>
 
-                    <div class="claim-step {% if step == 'identity_verification' %}active{% elif step == 'set_password' %}completed{% endif %}">
+
+                    <!-- Step 2: Identity -->
+                    <div class="
+                        claim-step
+                        {% if step == 'identity_verification' %}
+                            active
+                        {% elif step == 'set_password' %}
+                            completed
+                        {% endif %}
+                    ">
                         <div class="claim-step-circle">
                             {% if step == 'set_password' %}
                                 ✓
@@ -33,48 +66,113 @@
                                 2
                             {% endif %}
                         </div>
+
                         <span>Identity</span>
                     </div>
 
+
+                    <!-- Connector -->
                     <div class="claim-step-line"></div>
 
-                    <div class="claim-step {% if step == 'set_password' %}active{% endif %}">
-                        <div class="claim-step-circle">3</div>
+
+                    <!-- Step 3: Password -->
+                    <div class="
+                        claim-step
+                        {% if step == 'set_password' %}
+                            active
+                        {% endif %}
+                    ">
+                        <div class="claim-step-circle">
+                            3
+                        </div>
+
                         <span>Password</span>
                     </div>
 
-                <h1 class="page-heading mb-2">{{ title }}</h1>
+                </div>
+                <!-- End claim progress line-->
+
+
+                <h1 class="page-heading mb-2">
+                    {{ title }}
+                </h1>
+
                 <p class="section-copy mb-4">
-                    Please Enter the userid and password that was sent by mail
+                    Please enter the user ID and password that was sent by mail.
                 </p>
+
+
                 {% if step == "verify_credentials" %}
-                    <form method="post" >
+
+                    <form method="post">
+
                         {% csrf_token %}
+
                         {% if form.non_field_errors %}
-                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                        {% endif %}
-                        {% for field in form %}
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}
-                                <div class="form-text">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% for error in field.errors %}
-                                    <div class="text-danger small mt-1">{{ error }}</div>
-                                {% endfor %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
                             </div>
+                        {% endif %}
+
+
+                        {% for field in form %}
+
+                            <div class="mb-3">
+
+                                <label
+                                    class="form-label"
+                                    for="{{ field.id_for_label }}"
+                                >
+                                    {{ field.label }}
+                                </label>
+
+                                {{ field }}
+
+                                {% if field.help_text %}
+                                    <div class="form-text">
+                                        {{ field.help_text }}
+                                    </div>
+                                {% endif %}
+
+                                {% for error in field.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+
+                            </div>
+
                         {% endfor %}
-                        <button class="btn btn-primary w-100 mt-2" type="submit">Activate account</button>
+
+
+                        <button
+                            class="btn btn-primary w-100 mt-2"
+                            type="submit"
+                        >
+                            Activate account
+                        </button>
+
                     </form>
+
                 {% endif %}
+
+
                 <div class="soft-divider"></div>
+
                 <p class="section-copy mb-0">
                     Already activated?
-                    <a class="fw-semibold" href="{% url 'accounts:login' %}">Sign in instead</a>.
+                    <a
+                        class="fw-semibold"
+                        href="{% url 'accounts:login' %}"
+                    >
+                        Sign in instead
+                    </a>.
                 </p>
+
             </div>
         </div>
+
     </div>
 </div>
+
 {% endblock %}
