@@ -7,8 +7,8 @@ from django.core.exceptions import ValidationError
 class VerifyUserCredentialsForm(forms.Form):
     student_id = forms.CharField(
         label="Student ID",
-        min_length=8,
-        max_length=8,
+        # min_length=10,
+        max_length=10,
         required=True,
     )
 

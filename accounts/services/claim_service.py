@@ -3,7 +3,7 @@ from ..models import User
 
 def verifyUserCredentials(student_id: int, temp_password: str) -> User | None:
     # Check if student exists
-    user = User.objects.get(student_id=student_id)
+    user = User.objects.filter(student_id=student_id).first()
     if user:
         # Check if credentials match and 
         # the account has not been claimed

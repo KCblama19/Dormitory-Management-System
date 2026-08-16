@@ -97,12 +97,10 @@
                     {{ title }}
                 </h1>
 
+                {% if step == "verify_credentials" %}
                 <p class="section-copy mb-4">
                     Please enter the user ID and password that was sent by mail.
                 </p>
-
-
-                {% if step == "verify_credentials" %}
 
                     <form method="post">
 
@@ -111,6 +109,16 @@
                         {% if form.non_field_errors %}
                             <div class="alert alert-danger">
                                 {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        {% if messages %}
+                            <div class="error-container">
+                                {% for message in messages %}
+                                    <div class="alert alert-danger" role="alert">
+                                        {{ message }}
+                                    </div>
+                                {% endfor %}
                             </div>
                         {% endif %}
 
@@ -141,8 +149,10 @@
                                 {% endfor %}
 
                             </div>
-
+                            
                         {% endfor %}
+
+
 
 
                         <button
