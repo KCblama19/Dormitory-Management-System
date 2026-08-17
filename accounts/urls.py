@@ -1,6 +1,6 @@
 from django.urls import path
 from accounts.views.views import *
-from .views.claim_views import VerifyCredentialsView
+from .views.claim_views import VerifyCredentialsView, VerifyIdentityView
 
 app_name = "accounts"
 urlpatterns = [
@@ -10,6 +10,6 @@ urlpatterns = [
     
     # Claim-Flow urls
     path("claim/", VerifyCredentialsView.as_view(), name="verify-credentials"),
-    # path("claim/identity/", VerifyIdentityView.as_view(), name="verify-identity"),
+    path("claim/identity/", VerifyIdentityView.as_view(), name="verify-identity"),
     # path("claim/update_password/", UpdatePasswordView.as_view(), name="update-password")
 ]
