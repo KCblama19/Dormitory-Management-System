@@ -32,8 +32,8 @@ def updateUserPassword(user: object, new_password) -> User:
         user.set_password(new_password)
         user.is_claimed = True
         user.save()
-    # if the user instance doesn't exit
-    # return None
+        
+        return user
     else:
         return None
         

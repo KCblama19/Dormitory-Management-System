@@ -73,6 +73,9 @@ class UpdateUserPasswordForm(forms.Form):
     def clean_new_password(self):
         new_password = self.cleaned_data["new_password"].strip()
         
+        if not new_password:
+            raise ValidationError("Please Enter a password")
+        
         validate_password(new_password)
         
         return new_password
