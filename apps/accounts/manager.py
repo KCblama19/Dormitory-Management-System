@@ -1,6 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
 from django.utils.translation import gettext_lazy as _
-from accounts.utils.identity import generate_internal_username
+from apps.accounts.utils.identity import generate_internal_username
 import uuid
 
 
@@ -65,16 +65,16 @@ class UserManager(BaseUserManager):
             email = self.normalize_email(email)
             
 
-        if extra_fields.get("role") in [self.model.UserType.ADMIN, self.model.UserType.STAFF]:
+        if extra_fields.get("account_type") in [self.model.UserType.ADMIN, self.model.UserType.STAFF]:
             raise ValueError(_("Use create_staff or create_superuser"))
 
-        extra_fields.setdefault("role", self.model.UserType.STUDENT)
+        extra_fields.setdefault("account_type", self.model.UserType.STUDENT)
         extra_fields.setdefault("is_claimed", False)
         extra_fields.setdefault("is_active", True)
         
         """
         create a unique identifier 
-        based on the user role
+        based on the user account_type
         ie: "Student_2g01h"
         """
         username = generate_internal_username(self.model.UserType.STUDENT)
@@ -105,14 +105,14 @@ class UserManager(BaseUserManager):
             raise ValueError(_("Staff ID is required"))
         
 
-        if extra_fields.get("role") == self.model.UserType.STUDENT:
+        if extra_fields.get("account_type") == self.model.UserType.STUDENT:
             raise ValueError(_("Use create_student for student creation"))
-        if extra_fields.get("role") == self.model.UserType.ADMIN:
+        if extra_fields.get("account_type") == self.model.UserType.ADMIN:
             raise ValueError(_("Use create_superuser for admin creation"))
         
         """
         create a unique identifier 
-        based on the user role
+        based on the user account_type
         ie: "Staff_2g01h"
         """
         username = generate_internal_username(self.model.UserType.STAFF) # create a unique identifier 
@@ -122,7 +122,7 @@ class UserManager(BaseUserManager):
         if not date_of_birth:
             raise ValueError(_("Date of birth is required for claim flow"))
 
-        extra_fields.setdefault("role", self.model.UserType.STAFF)
+        extra_fields.setdefault("account_type", self.model.UserType.STAFF)
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", False)
         extra_fields.setdefault("is_active", True)
@@ -150,7 +150,7 @@ class UserManager(BaseUserManager):
         if not password:
             raise ValueError(_("Password is required"))
 
-        extra_fields["role"] = self.model.UserType.ADMIN
+        extra_fields["account_type"] = self.model.UserType.ADMIN
         extra_fields["is_staff"] = True
         extra_fields["is_superuser"] = True
         extra_fields["is_active"] = True
@@ -158,7 +158,7 @@ class UserManager(BaseUserManager):
         
         """
         create a unique identifier 
-        based on the user role
+        based on the user account_type
         ie: "Admin_2g01h"
         """
         username = username or generate_internal_username(self.model.UserType.ADMIN) 

@@ -2,8 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
-from accounts.manager import UserManager
 from django.core.validators import validate_email
+
+from apps.accounts.manager import UserManager
 import uuid
 
 class User(AbstractUser):
@@ -90,7 +91,7 @@ class User(AbstractUser):
         blank=True,
     )
 
-    # Role determines user behavior and permissions
+    # Account Type determines user behavior and permissions
     account_type = models.CharField(
         max_length=20,
         choices=AccountType.choices,

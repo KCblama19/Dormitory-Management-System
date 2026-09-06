@@ -1,5 +1,5 @@
 from django.urls import path
-from accounts.views.views import *
+from apps.accounts.views.views import *
 from .views.claim_views import VerifyCredentialsView, VerifyUserDOBView, UpdatePasswordView
 
 app_name = "accounts"

@@ -1,8 +1,10 @@
 from django import forms
-from accounts.models import User
+
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from accounts.utils.identity import generate_internal_username, get_user_age
+
+from apps.accounts.models import User
+from apps.accounts.utils.identity import generate_internal_username, get_user_age
 
 # -------------------
 # Custom Admin form
@@ -20,7 +22,7 @@ class UserAdminForm(forms.ModelForm):
         model = User
         fields = [
             "username",
-            "role",
+            "account_type",
             "student_id",
             "staff_id",
             "email",
@@ -62,15 +64,15 @@ class UserAdminForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         
-        role = cleaned_data["role"]
+        account_type = cleaned_data["account_type"]
         student_id = cleaned_data.get("student_id")
         staff_id = cleaned_data.get("staff_id")
         email = cleaned_data.get("email")
         date_of_birth = cleaned_data.get("date_of_birth")
         
-        if role == User.UserType.STUDENT and not student_id:
+        if account_type == User.UserType.STUDENT and not student_id:
             raise forms.ValidationError("Student id is required")
-        if role in [User.UserType.STAFF, User.UserType.ADMIN]:
+        if account_type in [User.UserType.STAFF, User.UserType.ADMIN]:
             if not (staff_id or email):
                 raise forms.ValidationError("Staff/Admin must have staff_id or email")
         
@@ -80,14 +82,14 @@ class UserAdminForm(forms.ModelForm):
         user = super().save(commit=False)
         
         # -------------------
-        # Auto-generate username(based on role)
+        # Auto-generate username(based on account_type)
         # -------------------
         if not user.username:
-            if user.role == User.UserType.STUDENT:
+            if user.account_type == User.UserType.STUDENT:
                  user.username = generate_internal_username(User.UserType.STUDENT)
-            if user.role == User.UserType.STAFF:
+            if user.account_type == User.UserType.STAFF:
                  user.username = generate_internal_username(User.UserType.STAFF)
-            if user.role == User.UserType.ADMIN:
+            if user.account_type == User.UserType.ADMIN:
                  user.username = generate_internal_username(User.UserType.ADMIN)
         
         user.full_clean()

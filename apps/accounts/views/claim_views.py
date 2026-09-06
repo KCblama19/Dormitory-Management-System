@@ -8,9 +8,9 @@ from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 
-from ..models import User
-from ..forms.claim_forms import VerifyUserCredentialsForm, VerifyUserDOBForm, UpdateUserPasswordForm
-from ..services.claim_service import verifyUserCredentials, verifyUserDOB, updateUserPassword
+from apps.accounts.models import User
+from apps.accounts.forms.claim_forms import VerifyUserCredentialsForm, VerifyUserDOBForm, UpdateUserPasswordForm
+from apps.accounts.services.claim_service import verifyUserCredentials, verifyUserDOB, updateUserPassword
 
 class VerifyCredentialsView(FormView):
     

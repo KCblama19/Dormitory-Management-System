@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from accounts.models import User
-from accounts.forms.admin_form import UserAdminForm
+from apps.accounts.models import User
+from apps.accounts.forms.admin_form import UserAdminForm
 import uuid
 
 
@@ -26,7 +26,7 @@ class UserAdmin(BaseUserAdmin):
     # --------------------------------------
     list_display = (
         "username",
-        "role",
+        "account_type",
         "student_id",
         "staff_id",
         "email",
@@ -36,7 +36,7 @@ class UserAdmin(BaseUserAdmin):
     )
 
     list_filter = (
-        "role",
+        "account_type",
         "is_claimed",
         "is_staff",
         "is_active",
@@ -93,7 +93,7 @@ class UserAdmin(BaseUserAdmin):
                 "username",
                 "password1",
                 "password2",
-                "role",
+                "account_type",
                 "student_id",
                 "staff_id",
                 "email",

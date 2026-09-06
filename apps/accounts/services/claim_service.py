@@ -1,4 +1,4 @@
-from ..models import User
+from apps.accounts.models import User
 from datetime import date
 from django.db.models import Q
 

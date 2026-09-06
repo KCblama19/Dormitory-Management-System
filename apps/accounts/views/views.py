@@ -4,7 +4,7 @@ from django.views.generic import FormView, TemplateView, View
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.contrib import messages
-from accounts.forms.login_form import LoginForm
+from apps.accounts.forms.login_form import LoginForm
 
 class DashBoardView(LoginRequiredMixin, TemplateView):
     template_name="accounts/dashboard.html"
