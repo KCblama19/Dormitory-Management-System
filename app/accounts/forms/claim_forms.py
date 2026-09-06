@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 class VerifyUserCredentialsForm(forms.Form):
-    student_id = forms.CharField(
+    identifier = forms.CharField(
         label="Student ID",
         # min_length=10,
         max_length=10,
@@ -20,20 +20,20 @@ class VerifyUserCredentialsForm(forms.Form):
     )
 
     def clean_student_id(self):
-        student_id = self.cleaned_data["student_id"].strip()
+        identifier = self.cleaned_data["identifier"].strip()
 
-        if not student_id.isdigit():
+        if not identifier.isdigit():
             raise ValidationError(
                 "Student ID must contain numbers only."
             )
 
-        return student_id
+        return identifier
 
     def clean_temp_password(self):
         return self.cleaned_data["temp_password"].strip()           
         
     
-class VerifyUserIdentityForm(forms.Form):
+class VerifyUserDOBForm(forms.Form):
     date_of_birth = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'}),
         label="Date of Birth",

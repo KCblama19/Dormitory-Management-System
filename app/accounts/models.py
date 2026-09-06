@@ -24,7 +24,7 @@ class User(AbstractUser):
     - Compatibility with Django auth system
     """
 
-    class UserType(models.TextChoices):
+    class AccountType(models.TextChoices):
         STUDENT = "STUDENT", _("Student")
         STAFF = "STAFF", _("Staff")
         ADMIN = "ADMIN", _("Administrator")
@@ -91,9 +91,9 @@ class User(AbstractUser):
     )
 
     # Role determines user behavior and permissions
-    role = models.CharField(
+    account_type = models.CharField(
         max_length=20,
-        choices=UserType.choices,
+        choices=AccountType.choices,
         help_text=_("Designates the role and permission of the user in the system"),
     )
     

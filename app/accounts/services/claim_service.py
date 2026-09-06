@@ -1,9 +1,14 @@
 from ..models import User
+from datetime import date
+from django.db.models import Q
 
 
-def verifyUserCredentials(student_id: int, temp_password: str) -> User | None:
+def verifyUserCredentials(identifier: int, temp_password: str) -> User | None:
     # Check if student exists
-    user = User.objects.filter(student_id=student_id).first()
+    user = User.objects.filter(
+        Q(student_id=identifier)|
+        Q(staff_id=identifier)).first()
+    
     if user:
         # Check if credentials match and 
         # the account has not been claimed
@@ -17,14 +22,9 @@ def verifyUserCredentials(student_id: int, temp_password: str) -> User | None:
     else:
         return None # Student don't exist
     
-def verifyUserIdentity(user: object, date_of_birth: str) -> User | None:
-    if user:
-        # if DOB matches records.
-        if user.date_of_birth == date_of_birth:
-            return user
-        # if DOB doesn't matches
-        else:
-            return None
+def verifyUserDOB(user: object, date_of_birth: date) -> bool:
+    return bool(user and user.date_of_birth == date_of_birth)
+        
         
 def updateUserPassword(user: object, new_password) -> User:
     if user:

@@ -4,7 +4,8 @@
 {% block extra_head %}
 
 <link rel="stylesheet"
-      href="{% static 'accounts/css/claim_account.css' %}">
+      href="{% static 'accounts/css/claim_account.css' %}"
+>
 
 {% endblock %}
 
@@ -30,12 +31,12 @@
                         claim-step
                         {% if step == 'verify_credentials' %}
                             active
-                        {% elif step == 'identity_verification' or step == 'set_password' %}
+                        {% elif step == 'verify_date_of_birth' or step == 'update_password' %}
                             completed
                         {% endif %}
                     ">
                         <div class="claim-step-circle">
-                            {% if step == 'identity_verification' or step == 'set_password' %}
+                            {% if step == 'verify_date_of_birth' or step == 'update_password' %}
                                 ✓
                             {% else %}
                                 1
@@ -50,17 +51,17 @@
                     <div class="claim-step-line"></div>
 
 
-                    <!-- Step 2: Identity -->
+                    <!-- Step 2: Date_of_birth -->
                     <div class="
                         claim-step
-                        {% if step == 'identity_verification' %}
+                        {% if step == 'verify_date_of_birth' %}
                             active
-                        {% elif step == 'set_password' %}
+                        {% elif step == 'update_password' %}
                             completed
                         {% endif %}
                     ">
                         <div class="claim-step-circle">
-                            {% if step == 'set_password' %}
+                            {% if step == 'update_password' %}
                                 ✓
                             {% else %}
                                 2
@@ -97,7 +98,6 @@
                     {{ title }}
                 </h1>
 
-                {% if step == "verify_credentials" %}
                 <p class="section-copy mb-4">
                     Please enter the user ID and password that was sent by mail.
                 </p>
@@ -152,20 +152,18 @@
                             
                         {% endfor %}
 
-
-
-
                         <button
                             class="btn btn-primary w-100 mt-2"
                             type="submit"
                         >
+                        {% if step == "verify_credentials" or "verify_date_of_birth"%}
                             Next Step
+                        {% else %}
+                            Activate account
+                        {% endif %}
                         </button>
 
                     </form>
-
-                {% endif %}
-
 
                 <div class="soft-divider"></div>
 

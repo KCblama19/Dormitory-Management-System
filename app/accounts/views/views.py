@@ -5,8 +5,6 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.contrib import messages
 from accounts.forms.login_form import LoginForm
-from ..forms.claim_forms import VerifyUserCredentialsForm, VerifyUserIdentityForm, UpdateUserPasswordForm
-from ..services.claim_service import verifyUserCredentials, verifyUserIdentity, updateUserPassword
 
 class DashBoardView(LoginRequiredMixin, TemplateView):
     template_name="accounts/dashboard.html"
