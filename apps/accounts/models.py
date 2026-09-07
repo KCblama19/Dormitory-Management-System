@@ -5,7 +5,10 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
 from apps.accounts.manager import UserManager
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 
 class User(AbstractUser):
     """
@@ -167,16 +170,17 @@ class User(AbstractUser):
         
         return f"Admin {self.staff_id} ({self.email})"
     
+    # DERIVED FIELDS
     # Return True or False based on the user role 
     @property
     def is_student(self):
-        return self.role == self.UserType.STUDENT
+        return self.account_type == self.UserType.STUDENT
     @property
     def is_staff_member(self):
-        return self.role == self.UserType.STAFF
+        return self.account_type == self.UserType.STAFF
     @property
     def is_admin_user(self):
-        return self.role == self.UserType.ADMIN
+        return self.account_type == self.UserType.ADMIN
     
     @property
     def primary_identifier(self):
@@ -187,5 +191,14 @@ class User(AbstractUser):
     
     def save(self, *args, **kwargs):
         # Enforce validation before saving
-        self.full_clean()
+        # Only run full_clean if the save did not originate from a Form/Admin panel
+        # Django forms pass a clean object, but scripts usually don't
+        if not kwargs.get('force_insert') and not kwargs.get('force_update'):
+            try:
+                self.full_clean()
+            except ValidationError as e:
+                logger.warning(
+                    f"Validation failed for Student. Data: {self.__dict__}. Errors: {e.message_dict}"
+                )
+                raise e
         super().save(*args, **kwargs)
