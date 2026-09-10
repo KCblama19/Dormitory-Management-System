@@ -6,8 +6,11 @@ from django.utils.translation import gettext_lazy as _
 # Django Extensions
 from django_countries.fields import CountryField
 
-# Models and Abstract Models
+# Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
+from apps.abstract_models.gender_model import Gender
+
+# Reference Tables
 from apps.profiles.studentModels.program_models import Program
 from apps.profiles.studentModels.degree_models import Degree
 from apps.profiles.studentModels.studentAssignCampus_models import StudentAssignCampus
@@ -84,10 +87,11 @@ class Student(TimeStampModel):
         max_length=50
     )
 
-    gender = models.CharField(
-        _("Gender"),
-        max_length=1,
-        choices=Gender
+    gender = models.OneToOneField(
+        Gender,        
+        max_length=3,
+        on_delete=models.PROTECT,
+        related_name="students"
     )
 
     nationality = CountryField(

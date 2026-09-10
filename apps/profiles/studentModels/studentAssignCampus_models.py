@@ -17,18 +17,18 @@ located or assigned to study for each academic year.
 
     - Key Features:
         - Location History: Universities often 
-        have multiple campuses (e.g., Main Campus, 
-        International Campus, Branch Campus). 
-        This model records where the student is based 
-        during a specific period.
+          have multiple campuses (e.g., Main Campus, 
+          International Campus, Branch Campus). 
+          This model records where the student is based 
+          during a specific period.
         
-    - Status Tracking: Tracks whether the assignment 
-      is ACTIVE, ENDED, or TRANSFERRED 
-      (e.g., if a student changes campuses mid-degree).
+        - Status Tracking: Tracks whether the assignment 
+          is ACTIVE, ENDED, or TRANSFERRED 
+          (e.g., if a student changes campuses mid-degree).
 
-    - Housing Eligibility Prerequisite: The systems 
-     use this to verify which campus's housing/dormitories 
-     a student is eligible to apply for in a given year
+        - Housing Eligibility Prerequisite: The systems 
+          use this to verify which campus's housing/dormitories 
+          a student is eligible to apply for in a given year
 """
 
 class StudentAssignCampus(TimeStampModel):
