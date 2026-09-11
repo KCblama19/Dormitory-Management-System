@@ -4,8 +4,8 @@ from django.core.exceptions import ValidationError
 
 # Models and Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
-from apps.profiles.studentModels.student_models import Student
-from apps.profiles.studentModels.academic_year_models import AcademicYear
+from apps.profiles.models.student.profile import Student
+from apps.profiles.models.student.academic_year import AcademicYear
 
 
 """

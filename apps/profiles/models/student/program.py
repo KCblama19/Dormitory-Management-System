@@ -4,8 +4,8 @@ from django.core.exceptions import ValidationError
 
 # Models and Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
-from apps.profiles.studentModels.degree_models import Degree
-from apps.profiles.studentModels.major_models import Major
+from apps.profiles.models.student.degree import Degree
+from apps.profiles.models.student.major import Major
 
 """
 This Model Tracks the University curriculum track, 

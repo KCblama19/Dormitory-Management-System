@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 
 # Models and Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
-from apps.profiles.studentModels.department_models import Department
+from apps.profiles.models.student.department import Department
 
 """
 This Model tracks a specific field of academic 

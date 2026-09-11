@@ -41,8 +41,9 @@ INSTALLED_APPS = [
     
     # Main Apps
     'apps.accounts',
-    # 'campus',
-    # 'rooms',
+    'apps.university',
+    'apps.campuses',
+    # 'roomates'
     # 'bookings',
     # 'admin_panel'
 ]
@@ -62,7 +63,7 @@ AUTHENTICATION_BACKENDS = [
     'accounts.backends.auth_backends.MultiIdentifierBackend', #Custom backend for multi-identification login
 ]
 
-ROOT_URLCONF = 'dorm_system.urls'
+ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -81,7 +82,7 @@ TEMPLATES = [
 
 
 
-WSGI_APPLICATION = 'dorm_system.wsgi.application'
+WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database

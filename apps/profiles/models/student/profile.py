@@ -11,10 +11,10 @@ from apps.abstract_models.timestamp_models import TimeStampModel
 from apps.abstract_models.gender_model import Gender
 
 # Reference Tables
-from apps.profiles.studentModels.program_models import Program
-from apps.profiles.studentModels.degree_models import Degree
-from apps.profiles.studentModels.studentAssignCampus_models import StudentAssignCampus
-from apps.profiles.studentModels.enrollment_models import StudentEnrollment
+from apps.profiles.models.student.program import Program
+from apps.profiles.models.student.degree import Degree
+from apps.profiles.models.student.campus_assignment import StudentAssignCampus
+from apps.profiles.models.student.enrollment import StudentEnrollment
 
 """
 This Model tracks an individual student's personal 
