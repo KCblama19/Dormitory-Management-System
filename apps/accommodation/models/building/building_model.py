@@ -17,7 +17,7 @@ class Building(TimeStampModel):
         MIXED = "MIXED", _("mixed")
     
     campus = models.ForeignKey(
-        "campuses.Campus",
+        "accommodation.Campus",
         on_delete=models.PROTECT,
         related_name="buildings",
     )
