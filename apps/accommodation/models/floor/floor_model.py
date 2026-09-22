@@ -41,13 +41,16 @@ class Floor(TimeStampModel):
                     "Only applicable if the gender policy of the building is Mixed"
         ),
     )
-    default_floor_bed_capacity = models.PositiveSmallIntegerField(
-        _("Default floor bed capacity"),
-        validators=[MinValueValidator(1)],
+    bed_configuration_override = models.ForeignKey(
+        "accommodation.BedConfiguration",
+        on_delete=models.PROTECT,
+        related_name="floor_overrides",
+        verbose_name=_("bed configuration override"),
         null=True,
         blank=True,
         help_text=_("Optional floor level bed configuration"
-                    "If not set, the floor inherit the default bed capacity of the building")
+                    "If empty, the building bed configuration is used."
+        ),
     )
     restriction_note = models.TextField(
         max_length=255,
@@ -83,5 +86,12 @@ class Floor(TimeStampModel):
         ]
     
     def __str__(self):
-        return f"{self.building} Floor {self.building_number}"
+        return f"{self.building} Floor {self.floor_number}"
+    
+    @property
+    def effective_bed_configuration(self):
+        if self.bed_configuration_override_id:
+            return self.bed_configuration_override
+        
+        return self.building.default_bed_configuration
     

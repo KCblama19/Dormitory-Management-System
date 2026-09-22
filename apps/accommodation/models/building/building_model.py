@@ -55,8 +55,15 @@ class Building(TimeStampModel):
         _("Maximum Floors"),
         help_text=_("The maximum number of floors of the building."),
     )
-    default_beds_per_room = models.PositiveSmallIntegerField(
-        help_text=_("Default number of physical beds in each room"),
+    default_bed_configuration = models.ForeignKey(
+        "accommodation.BedConfiguration",
+        on_delete=models.PROTECT,
+        related_name="default_for_buildings",
+        verbose_name=_("default bed configuration"),
+        help_text=_(
+            "Default number of physical beds in each room"
+            "in this building."
+        ),
     )
     
     class Meta:

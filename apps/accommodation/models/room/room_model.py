@@ -58,7 +58,7 @@ class Room(TimeStampModel):
         verbose_name=_("bed configuration override"),
         help_text=_(
             "Optional room-level override for the number/configuration "
-            "of beds. When empty, the room inherits the Floor configuration."
+            "of beds. When empty, the room inherits the Floor/building configuration."
         ),
     )
 
@@ -105,7 +105,7 @@ class Room(TimeStampModel):
             Floor 12 + Position 3 -> 1203
             Floor 12 + Position 23 -> 1223
         """
-        return f"{self.floor.number}{self.position:02d}"
+        return f"{self.floor.floor_number}{self.position:02d}"
 
     @property
     def full_code(self):
@@ -119,7 +119,7 @@ class Room(TimeStampModel):
             Building 21 / Floor 12 / Position 23
             -> 21-1223
         """
-        return f"{self.building.number}-{self.room_number}"
+        return f"{self.building.building_number}-{self.room_number}"
 
     @property
     def active_beds(self):
@@ -129,7 +129,7 @@ class Room(TimeStampModel):
         Physical Bed records are the source of truth for accommodation
         capacity rather than a capacity field stored directly on Room.
         """
-        return self.beds.filter(is_active=True)
+        return self.beds.filter(status="AVAILABLE")
 
     @property
     def capacity(self):
@@ -195,7 +195,7 @@ class Room(TimeStampModel):
                 {"position": _("Room position must be at least 1.")}
             )
 
-        if self.floor.max_rooms is not None and self.position > self.floor.max_rooms:
+        if self.floor.max_rooms_per_floor is not None and self.position > self.floor.max_rooms:
             raise ValidationError(
                 {
                     "position": _(

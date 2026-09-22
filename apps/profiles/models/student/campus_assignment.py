@@ -43,19 +43,20 @@ class StudentAssignCampus(TimeStampModel):
         on_delete=models.CASCADE,
         related_name="campus_assignments"
     )
-
     campus = models.ForeignKey(
         "Campus",
         on_delete=models.PROTECT,
         related_name="student_assignments"
     )
-
     academic_year = models.ForeignKey(
         AcademicYear,
         on_delete=models.PROTECT,
         related_name="campus_assignments"
     )
-
+    campus_arrival_date = models.DateTimeField(
+        _("Campus Arrival Date"),
+        help_text=("Date the student arrive at that specific campus"),
+    )
     start_date = models.DateField(
         _("Assignment start date")
     )

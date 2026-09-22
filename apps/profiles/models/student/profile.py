@@ -41,10 +41,6 @@ campus housing eligibility state.
 class Student(TimeStampModel):
 
     # Enumerators
-    class Gender(models.TextChoices):
-        MALE = "M", "Male"
-        FEMALE = "F", "Female"
-
     class EligibilityStatus(models.TextChoices):
         PENDING = "PENDING", "Pending Review"
         ELIGIBLE = "ELIGIBLE", "Eligible"
@@ -87,7 +83,7 @@ class Student(TimeStampModel):
         max_length=50
     )
 
-    gender = models.OneToOneField(
+    gender = models.ForeignKey(
         Gender,        
         max_length=3,
         on_delete=models.PROTECT,
@@ -123,7 +119,18 @@ class Student(TimeStampModel):
             "A short introduction of the student."
         )
     )
+    
+    def __str__(self):
+        return f"{self.student_id} | {self.full_name}"
+    
+    def clean(self):
+        super().clean()
 
+    def save(self, **kwargs):
+        self.full_clean()
+        super().save(**kwargs)
+
+    
     # Derived Fields
     @property
     def full_name(self):
@@ -290,12 +297,3 @@ class Student(TimeStampModel):
             == self.EligibilityStatus.ELIGIBLE
         )
 
-    def clean(self):
-        super().clean()
-
-    def save(self, **kwargs):
-        self.full_clean()
-        super().save(**kwargs)
-
-    def __str__(self):
-        return f"{self.student_id} | {self.full_name}"

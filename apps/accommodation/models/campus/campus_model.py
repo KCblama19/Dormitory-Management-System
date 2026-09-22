@@ -55,10 +55,6 @@ class Campus(TimeStampModel):
         _("University Country"),
         blank_label="Select Country",
     )
-    campus_arrival_date = models.DateTimeField(
-        _("Campus Arrival Date"),
-        help_text=("Date the student arrive at that specific campus"),
-    )
     description = models.TextField(
         blank=True,
         help_text=_(

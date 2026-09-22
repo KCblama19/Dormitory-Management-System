@@ -43,7 +43,6 @@ class Staff(TimeStampModel):
         verbose_name=_("user"),
         help_text=_("The user account associated with this staff profile."),
     )
-
     building = models.ForeignKey(
         "accommodation.Building",
         on_delete=models.PROTECT,
@@ -51,7 +50,6 @@ class Staff(TimeStampModel):
         verbose_name=_("building"),
         help_text=_("The dormitory building this staff member manages."),
     )
-
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
@@ -59,7 +57,6 @@ class Staff(TimeStampModel):
         verbose_name=_("role"),
         help_text=_("The staff member's level of responsibility."),
     )
-
     status = models.CharField(
         max_length=10,
         choices=Status.choices,

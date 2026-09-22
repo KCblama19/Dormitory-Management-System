@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 class User(AbstractUser):
     """
-    Custom User model designed for controlled identity systems.
+    Custom User model designed for controlled identity across the system.
 
     Key design principles:
     - Users are PROVISIONED by admin (no public registration)
-    - Multiple identifiers supported (student_id, email, phone)
+    - Multiple identifiers supported (student_id, staff_id, email(only for admins), (phone are disable for now))
     - Authentication still uses Django's `username` internally
 
     Identifier strategy:
@@ -24,8 +24,7 @@ class User(AbstractUser):
     - Staff/Admin → username is system-generated
 
     This allows:
-    - Flexible login (via custom backend later)
-    - Compatibility with Django auth system
+    - Flexible login (via custom backend)
     """
 
     class AccountType(models.TextChoices):
@@ -81,7 +80,7 @@ class User(AbstractUser):
     email = models.EmailField(
         _("email address"),
         unique=True,
-        null=True,  # Allow null for students without email
+        null=True,  
         blank=True,
         validators=[validate_email]
     )
@@ -105,10 +104,10 @@ class User(AbstractUser):
     # Verification / Activation Fields
     # ---------------------------------
     
-    # accountStatus = models.CharField(
-    #     max_length=20,
-    #     choices=AccountStatus.choices
-    # )
+    accountStatus = models.CharField(
+        max_length=20,
+        choices=AccountStatus.choices
+    )
     
     is_claimed = models.BooleanField(
         default=False,
