@@ -7,6 +7,8 @@ from apps.abstract_models.timestamp_models import TimeStampModel
 from apps.profiles.models.student.degree import Degree
 from apps.profiles.models.student.major import Major
 
+# Manager
+from apps.profiles.models.managers.student.programQuerySet import ProgramQuerySet
 """
 This Model Tracks the University curriculum track, 
 instruction language, and enrollment path a 
@@ -111,7 +113,8 @@ class Program(TimeStampModel):
     is_active = models.BooleanField(
         default=True
     )
-
+    
+    objects = ProgramQuerySet.as_manager()
     class Meta:
         ordering = ["code"]
         verbose_name = _("Program")

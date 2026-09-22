@@ -16,6 +16,8 @@ from apps.profiles.models.student.degree import Degree
 from apps.profiles.models.student.campus_assignment import StudentAssignCampus
 from apps.profiles.models.student.enrollment import StudentEnrollment
 
+# Manager
+from apps.profiles.models.managers.student.manager import StudentQueryset
 """
 This Model tracks an individual student's personal 
 identity profile, admission status, and 
@@ -119,6 +121,8 @@ class Student(TimeStampModel):
             "A short introduction of the student."
         )
     )
+    
+    objects =  StudentQueryset.as_manager()
     
     def __str__(self):
         return f"{self.student_id} | {self.full_name}"

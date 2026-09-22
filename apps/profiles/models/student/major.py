@@ -1,9 +1,12 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# Models and Abstract Models
+# Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 from apps.profiles.models.student.department import Department
+
+# Managers
+from apps.profiles.models.managers.student.majorQuerySet import MajorQuerySet
 
 """
 This Model tracks a specific field of academic 
@@ -51,6 +54,8 @@ class Major(TimeStampModel):
     is_active = models.BooleanField(
         default=True
     )
+    
+    objects = MajorQuerySet.as_manager()
 
     class Meta:
         ordering = ["code"]

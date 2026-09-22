@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.profiles.models.managers.student.academicYearManager import AcademicYearQueryset
 """
 This Model tracks the university operational calendar session, 
 start/end dates, and active school year status
@@ -50,6 +52,8 @@ class AcademicYear(TimeStampModel):
     is_active = models.BooleanField(
         default=True
     )
+    
+    objects = AcademicYearQueryset.as_manager()
 
     class Meta:
         ordering = ["-start_date"]

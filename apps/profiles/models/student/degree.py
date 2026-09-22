@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy as _
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Managers
+from apps.profiles.models.managers.student.degreeQuerySet import DegreeQuerySet
 """"
 Tracks the formal qualification, degree level, and 
 standard completion duration awarded by the university.
@@ -70,7 +72,9 @@ class Degree(TimeStampModel):
     is_active = models.BooleanField(
         default=True
     )
-
+    
+    objects = DegreeQuerySet.as_manager()
+    
     class Meta:
         ordering = ["academic_level", "code"]
         verbose_name = _("Degree")

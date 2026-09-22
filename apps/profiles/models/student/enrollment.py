@@ -8,6 +8,8 @@ from apps.profiles.models.student.profile import Student
 from apps.profiles.models.student.program import Program
 from apps.profiles.models.student.academic_year import AcademicYear
 
+# Manager
+from apps.profiles.models.managers.student.enrollmentQuerySet import EnrollmentQuerySet
 """
 This Model tracks what a student is studying and 
 their academic status for each academic year.
@@ -102,6 +104,8 @@ class StudentEnrollment(TimeStampModel):
         blank=True,
         null=True
     )
+    
+    objects = EnrollmentQuerySet.as_manager()
 
     class Meta:
         ordering = ["-start_date"]

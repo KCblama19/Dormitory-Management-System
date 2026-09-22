@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.profiles.models.managers.student.departmentQuerySet import DepartmentQuerySet
 class Department(TimeStampModel):
     name = models.CharField(
         _("Department name"),
@@ -29,7 +31,9 @@ class Department(TimeStampModel):
     is_active = models.BooleanField(
         default=True
     )
-
+    
+    objects = DepartmentQuerySet.as_manager()
+    
     class Meta:
         ordering = ["code"]
         verbose_name = _("Department")

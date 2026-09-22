@@ -12,6 +12,13 @@ class StudentQueryset(models.QuerySet):
     student, etc to a campus have been placed in the 
     services 
     """
+    def with_related(self):
+        """
+        Return the User connected to this student profile
+        and their assignCampus information
+        """
+        return self.select_related("user", "")
+        
     
     def active(self):
         """
@@ -45,7 +52,7 @@ class StudentQueryset(models.QuerySet):
         """
         return self.filter(eligibility_status="INELIGIBLE")
     
-    def pending_eligibity(self):
+    def pending_eligibility(self):
         """
         Return students whose accommodation eligibility
         has not been determined 

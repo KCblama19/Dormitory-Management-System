@@ -2,12 +2,13 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
-# Models and Abstract Models
+# Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 from apps.profiles.models.student.profile import Student
 from apps.profiles.models.student.academic_year import AcademicYear
 
-
+# Manager
+from profiles.models.managers.student.campusAssignment import StudentAssignCampusQuerySet
 """
 This Model tracks where a student is physically 
 located or assigned to study for each academic year.
@@ -83,7 +84,10 @@ class StudentAssignCampus(TimeStampModel):
             "or transfer."
         )
     )
-
+    
+    objects = StudentAssignCampusQuerySet.as_manager()
+    
+    
     class Meta:
         ordering = ["-start_date"]
         verbose_name = _("Student Campus Assignment")
