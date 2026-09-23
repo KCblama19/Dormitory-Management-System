@@ -6,6 +6,9 @@ from django.utils.translation import gettext_lazy as _
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.accommodation.models.managers.roomQuerySet import RoomQuerySet
+
 
 class Room(TimeStampModel):
     """
@@ -77,6 +80,8 @@ class Room(TimeStampModel):
                 name="room_position_gte_1",
             ),
         ]
+    
+    objects = RoomQuerySet.as_manager()
 
     def __str__(self):
         return self.full_code

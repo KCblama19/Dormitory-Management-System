@@ -6,6 +6,10 @@ from django.utils.translation import gettext_lazy as _
 # Abstract models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.accommodation.models.managers.bedConfigQuerySet import BedConfigurationQuerySet
+
+
 class BedConfiguration(TimeStampModel):
     """
     Defines a reusable accommodation configuration for rooms capacity
@@ -61,6 +65,8 @@ class BedConfiguration(TimeStampModel):
             "for use"
         ),
     )
+    
+    objects = BedConfigurationQuerySet.as_manager()
     
     class Meta:
         ordering = ["bed_count", "name"]

@@ -6,6 +6,9 @@ from django.utils.translation import gettext_lazy as _
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.accommodation.models.managers.bedQuerySet import BedQuerySet
+
 
 class Bed(TimeStampModel):
     """
@@ -57,6 +60,8 @@ class Bed(TimeStampModel):
             "The current operational status of the physical bed."
         ),
     )
+    
+    objects = BedQuerySet.as_manager()
 
     class Meta:
         ordering = ["room", "position"]

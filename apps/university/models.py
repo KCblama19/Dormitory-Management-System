@@ -14,7 +14,22 @@ A single deployment is intended for one university,
 but the model supports multiple campuses, including campuses
 located in different countries.
 """
-
+class UniversityQuerySet(models.QuerySet):
+    """
+    Reusable queries for University operations
+    """
+    def active(self):
+        return self.filter(is_active=True)
+    
+    def inactive(self):
+        return self.filter(is_active=False)
+    
+    def search(self, term):
+        return self.filter(
+            models.Q(code__icontains=term)
+            | models.Q(name__icontains=term)
+        )
+        
 class University(TimeStampModel):
     
     code = models.CharField(

@@ -7,6 +7,9 @@ from django_countries.fields import CountryField
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Managers
+from apps.accommodation.models.managers.campusQuerySet import CampusQuerySet
+
 """
 This Model represents a physical campus belonging to a 
 university.
@@ -65,6 +68,8 @@ class Campus(TimeStampModel):
         _("Active"),
         default=True,
     )
+    
+    objects = CampusQuerySet.as_manager()
     
     class Meta:
         ordering = ["name"]

@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.accommodation.models.managers.buildingQuerySet import BuildingQuerySet
 
 class Building(TimeStampModel):
     class StudentPopulation(models.TextChoices):
@@ -90,6 +92,8 @@ class Building(TimeStampModel):
             )
         ]
         
+    objects = BuildingQuerySet.as_manager()
+    
     def __str__(self):
         return f"{self.name} | Bul-{self.building_number}"
     

@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
 
+# Manager
+from apps.accommodation.models.managers.floorQuerySet import FloorQuerySet
 class Floor(TimeStampModel):
     class GenderConfiguration(models.TextChoices):
         MALE = "MALE", _("Male")
@@ -70,6 +72,8 @@ class Floor(TimeStampModel):
         default=False,
         help_text=_("Show the floor is restricted or preserve for professors or staff")
     )
+    
+    objects = FloorQuerySet.as_manager()
     
     class Meta:
         ordering = ["building", "floor_number"]

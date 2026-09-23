@@ -8,7 +8,7 @@ from apps.accounts.manager import UserManager
 import logging
 import uuid
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)       
 
 class User(AbstractUser):
     """
