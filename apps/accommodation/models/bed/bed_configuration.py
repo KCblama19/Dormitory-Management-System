@@ -73,7 +73,7 @@ class BedConfiguration(TimeStampModel):
         verbose_name = _("Bed Configuration")
         verbose_name_plural = _("Bed Configurations")
         
-        constraint = [
+        constraints = [
             models.CheckConstraint(
                 condition=Q(bed_count__gte=1),
                 name="bed_configuration_count_gte_1",
@@ -83,7 +83,7 @@ class BedConfiguration(TimeStampModel):
     def clean(self):
         super().clean()
             
-        if self.bed_count <= 1:
+        if self.bed_count < 1:
             raise ValidationError(
                 {
                     "bed_count": _(

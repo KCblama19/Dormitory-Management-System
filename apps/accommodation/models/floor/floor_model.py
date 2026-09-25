@@ -20,7 +20,7 @@ class Floor(TimeStampModel):
                 
     building = models.ForeignKey(
         "accommodation.Building",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="floors",
         verbose_name=_("building"),
     )

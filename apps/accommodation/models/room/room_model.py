@@ -200,7 +200,7 @@ class Room(TimeStampModel):
                 {"position": _("Room position must be at least 1.")}
             )
 
-        if self.floor.max_rooms_per_floor is not None and self.position > self.floor.max_rooms:
+        if self.floor.max_rooms_per_floor is not None and self.position > self.floor.max_rooms_per_floor:
             raise ValidationError(
                 {
                     "position": _(

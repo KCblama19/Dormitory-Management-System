@@ -43,6 +43,13 @@ class Staff(TimeStampModel):
         verbose_name=_("user"),
         help_text=_("The user account associated with this staff profile."),
     )
+    staff_id = models.CharField(
+        _("Staff ID"),
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text=_("Unique institutional staff identifier."),
+    )
     building = models.ForeignKey(
         "accommodation.Building",
         on_delete=models.PROTECT,

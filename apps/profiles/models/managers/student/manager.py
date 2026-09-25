@@ -29,7 +29,9 @@ class StudentQueryset(models.QuerySet):
         academically active or housing eligible.
         It only checks the associated user account status
         """
-        return self.filter(user__accountStatus="ACTIVE")
+        return self.filter(
+            user__accountStatus="ACTIVE",
+            user__is_active=True,)
     
     def admitted(self):
         """

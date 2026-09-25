@@ -33,9 +33,9 @@ class User(AbstractUser):
         ADMIN = "ADMIN", _("Administrator")
         
     class AccountStatus(models.TextChoices):
-        ACTIVE = "active", _("Active")
-        LOCKED = "locked", _("Locked")
-        SUSPENDED = "suspended", _("Suspended")
+        ACTIVE = "ACTIVE", _("Active")
+        LOCKED = "LOCKED", _("Locked")
+        SUSPENDED = "SUSPENDED", _("Suspended")
         
         
     # -------------------------
@@ -143,13 +143,17 @@ class User(AbstractUser):
         - Staff/Admin MUST have staff_id or email
         """
         
-        if self.role == self.UserType.STUDENT:
+        if self.account_type == self.AccountType.STUDENT:
             if not self.student_id:
-                raise ValidationError(_("Students must have a student ID"))
+                raise ValidationError(
+                    _("Students must have a student ID")
+                )
             
-        if self.role in [self.UserType.STAFF, self.UserType.ADMIN]:
+        if self.account_type in [self.AccountType.STAFF, self.AccountType.ADMIN]:
             if not (self.staff_id or self.email):
-                raise ValidationError(_("Staff/Admin must have a staff id or an email"))
+                raise ValidationError(
+                    _("Staff/Admin must have a staff id or an email")
+                    )
         
         
     # -----------------------------

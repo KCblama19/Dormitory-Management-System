@@ -46,12 +46,12 @@ class BuildingQuerySet(models.QuerySet):
         
     def male_only(self):
         return self.filter(
-            gender_policy="MALE_ONLY",
+            gender_policy="MALE ONLY",
         )
         
     def female_only(self):
         return self.filter(
-            gender_policy="FEMALE_ONLY",
+            gender_policy="FEMALE ONLY",
         )
     
     def mixed(self):

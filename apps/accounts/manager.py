@@ -79,7 +79,7 @@ class UserManager(BaseUserManager):
         """
         username = generate_internal_username(self.model.UserType.STUDENT)
         student_id = str(student_id).strip()
-        date_of_birth = extra_fields.get("date_of_birth")
+        date_of_birth = extra_fields.pop ("date_of_birth", None)
         if not date_of_birth:
             raise ValueError(_("Date of birth is required for claim flow"))
 
@@ -118,7 +118,7 @@ class UserManager(BaseUserManager):
         username = generate_internal_username(self.model.UserType.STAFF) # create a unique identifier 
         email = self.normalize_email(email)
         staff_id = str(staff_id).strip()
-        date_of_birth = extra_fields.get("date_of_birth")
+        date_of_birth = extra_fields.pop("date_of_birth", None)
         if not date_of_birth:
             raise ValueError(_("Date of birth is required for claim flow"))
 

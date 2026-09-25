@@ -68,6 +68,10 @@ class Building(TimeStampModel):
         ),
     )
     
+    is_active = models.BooleanField(
+        default=True,
+    )
+    
     class Meta:
         ordering = ["campus", "building_number"]
         verbose_name = _("Building")
@@ -86,10 +90,6 @@ class Building(TimeStampModel):
                 condition=Q(max_floors__gte=1),
                 name="max_floor_cannot_be_less_than_one",
             ),
-            models.CheckConstraint(
-                condition=Q(default_beds_per_room__gte=1),
-                name="default_per_room_cannot_be_less_than_one",
-            )
         ]
         
     objects = BuildingQuerySet.as_manager()
