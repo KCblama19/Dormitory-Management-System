@@ -64,7 +64,7 @@ class Student(TimeStampModel):
 
     student_id = models.CharField(
         _("Student ID"),
-        max_length=30,
+        max_length=10,
         unique=True,
         db_index=True
     )

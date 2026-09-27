@@ -5,12 +5,16 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import FormView
 
+# MODELS
 from apps.accounts.models import User
+
+# FORMS
 from apps.accounts.forms.claim_forms import (
     VerifyUserCredentialsForm,
     VerifyUserDOBForm,
     UpdateUserPasswordForm,
 )
+# SERVICES
 from apps.accounts.services.claim_service import (
     verifyUserCredentials,
     verifyUserDOB,
@@ -142,7 +146,7 @@ class UpdatePasswordView(FormView):
         if updated_user is None:
             messages.error(
                 self.request,
-                "Unable to complete account claim. Please restart verification.",
+                "Unable to complete account claim. Invalid User or account has been claimed.",
             )
             return redirect("accounts:verify-credentials")
 

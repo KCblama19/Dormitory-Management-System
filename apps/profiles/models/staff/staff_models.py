@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 # Abstract Models
 from apps.abstract_models.timestamp_models import TimeStampModel
+from apps.abstract_models.gender_model import Gender
 
 # Dormitory Models
 from apps.accommodation.models.building.building_model import Building
@@ -35,6 +36,7 @@ class Staff(TimeStampModel):
     class Status(models.TextChoices):
         ACTIVE = "ACTIVE", _("Active")
         INACTIVE = "INACTIVE", _("Inactive")
+        SUSPENDED = "SUSPENDED", _("Suspended")
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -45,10 +47,29 @@ class Staff(TimeStampModel):
     )
     staff_id = models.CharField(
         _("Staff ID"),
-        max_length=50,
+        max_length=10,
         unique=True,
         db_index=True,
         help_text=_("Unique institutional staff identifier."),
+    )
+    first_name = models.CharField(
+        _("Staff first name"),
+        max_length=50,
+    )
+    middle_name = models.CharField(
+        _("Staff middle name"),
+        max_length=50,
+    )
+    last_name = models.CharField(
+        _("Staff last name"),
+        max_length=50,
+    )
+    gender = models.ForeignKey(
+        Gender,
+        max_length=3,
+        verbose_name=_("Staff Gender"),
+        on_delete=models.PROTECT,
+        related_name="staffs"
     )
     building = models.ForeignKey(
         "accommodation.Building",
@@ -99,3 +120,16 @@ class Staff(TimeStampModel):
 
     def __str__(self):
         return f"{self.user} - {self.get_role_display()} - {self.building}"
+    
+    # Derived Fields
+    @property
+    def full_name(self):
+        names = [
+            self.first_name,
+            self.middle_name,
+            self.last_name
+        ]
+        
+        return " ".join(
+            name for name in names if name
+        ).strip()
