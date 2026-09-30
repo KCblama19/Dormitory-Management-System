@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 # Abstract Models
-from apps.abstract_models.timestamp_models import TimeStampModel
+from core.abstract_models.timestamp_models import TimeStampModel
 
 # Manager
 from apps.accommodation.models.managers.bedQuerySet import BedQuerySet

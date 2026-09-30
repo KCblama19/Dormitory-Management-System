@@ -65,7 +65,7 @@ class StaffQuerySet(models.QuerySet):
 
     def with_user(self):
         return self.select_related(
-            "user",
+            "user", None,
         )
 
     def with_building(self):

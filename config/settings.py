@@ -41,8 +41,9 @@ INSTALLED_APPS = [
     
     # Main Apps
     'apps.accounts',
+    'apps.profiles',
     'apps.university',
-    'apps.campuses',
+    'apps.accommodation',
     # 'roomates'
     # 'bookings',
     # 'admin_panel'

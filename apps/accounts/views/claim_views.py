@@ -16,9 +16,7 @@ from apps.accounts.forms.claim_forms import (
 )
 # SERVICES
 from apps.accounts.services.claim_service import (
-    verifyUserCredentials,
-    verifyUserDOB,
-    updateUserPassword,
+    ClaimService,
 )
 
 
@@ -41,7 +39,7 @@ class VerifyCredentialsView(FormView):
         identifier = form.cleaned_data["identifier"]
         temp_password = form.cleaned_data["temp_password"]
 
-        user = verifyUserCredentials(
+        user = ClaimService.verify_user_credentials(
             identifier=identifier,
             temp_password=temp_password,
         )
@@ -91,7 +89,7 @@ class VerifyUserDOBView(FormView):
 
         date_of_birth = form.cleaned_data["date_of_birth"]
 
-        if verifyUserDOB(
+        if ClaimService.verify_user_DOB(
             user=user,
             date_of_birth=date_of_birth,
         ):
@@ -138,7 +136,7 @@ class UpdatePasswordView(FormView):
 
         new_password = form.cleaned_data["new_password"]
 
-        updated_user = updateUserPassword(
+        updated_user = ClaimService.update_user_password(
             user=user,
             new_password=new_password,
         )
@@ -150,7 +148,7 @@ class UpdatePasswordView(FormView):
             )
             return redirect("accounts:verify-credentials")
 
-        self.request.session.pop("claim_user_id", None)
+        del self.request.session["claim_user_id"]
 
         messages.success(
             self.request,

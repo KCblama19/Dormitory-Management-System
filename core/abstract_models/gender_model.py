@@ -1,5 +1,5 @@
 from django.db import models
-from apps.abstract_models.timestamp_models import TimeStampModel
+from core.abstract_models.timestamp_models import TimeStampModel
 from django.utils.translation import gettext_lazy as _
 
 class Gender(TimeStampModel):

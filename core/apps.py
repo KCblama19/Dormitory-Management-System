@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class AccommodationConfig(AppConfig):
+class CoreConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.accommodation'
+    name = 'core'

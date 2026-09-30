@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 # Abstract Models
-from apps.abstract_models.timestamp_models import TimeStampModel
-from apps.abstract_models.gender_model import Gender
+from core.abstract_models.timestamp_models import TimeStampModel
+from core.abstract_models.gender_model import Gender
 
 # Dormitory Models
 from apps.accommodation.models.building.building_model import Building

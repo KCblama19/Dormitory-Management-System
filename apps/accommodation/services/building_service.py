@@ -16,9 +16,13 @@ class BuildingService:
         gender_policy, max_floors,
         default_bed_configuration,
     ):
+        if not campus.is_active:
+            raise ValidationError(
+                "Cannot create a building on an inactive campus."
+            )
         if max_floors < 1:
             raise ValidationError(
-                "Building must allow at least one floor."
+                "Maximum floor must be at least 1."
             )
             
         if not default_bed_configuration.is_active:
@@ -27,17 +31,15 @@ class BuildingService:
                 "used as the building default."
             )
             
-        if Building.objects.filter(
-            campus=campus,
+        if Building.objects.for_campus(campus).filter(
             building_number=building_number,
         ).exists():
             raise ValidationError(
                 "A building with this number already exists"
-                "on the campus."
+                "on this campus."
             )
             
-        if Building.objects.filter(
-            campus=campus,
+        if Building.objects.for_campus(campus).filter(
             code=code,
         ).exists():
             raise ValidationError(
@@ -47,17 +49,20 @@ class BuildingService:
         
         building = Building(
             campus=campus,
-            building_number=building_number,
-            name=name,
-            code=code,
+            building_number=str(building_number).strip(),
+            name=name.strip(),
+            code=code.strip(),
             student_population=student_population,
             gender_policy=gender_policy,
             max_floors=max_floors,
             default_bed_configuration=default_bed_configuration,
         )
         
-        building.full_clean()
-        building.save()
+        try:
+            building.full_clean()
+            building.save()
+        except ValidationError as exc:
+            raise ValidationError(exc.message_dict)
         
         return building
     
@@ -80,6 +85,20 @@ class BuildingService:
                 raise ValidationError(
                     f"'{field}' cannot be edited"
                 )
+        
+        if changes.get("name") is not None:
+            name = changes.pop("name", None)
+            building.name = name.strip()
+            
+        if changes.get("building_number") is not None:
+            building_number = changes.pop("building_number", None)
+            building.building_number = str(
+                building_number
+            ).strip()
+            
+        if changes.get("code") is not None:
+            code = changes.pop("code", None)
+            building.code = code.strip()
                 
         if "max_floors" in changes:
             max_floors = changes["max_floors"]
@@ -96,6 +115,8 @@ class BuildingService:
                     "Maximum floors cannot be reduced"
                     "below the number of existing floors."
                 )
+                
+            building.max_floors=max_floors
         
         gender_policy = changes.pop("gender_policy", None)
         student_population = changes.pop("student_population", None)
@@ -113,9 +134,22 @@ class BuildingService:
                 
         for field, value in changes.items():
             setattr(building, field, value)
-            
-        building.full_clean()
-        building.save()
+        
+        try:   
+            building.full_clean()
+            building.save(update_fields=[
+                "building_number",
+                "name",
+                "code",
+                "student_population",
+                "gender_policy",
+                "max_floors",
+                "default_bed_configuration"
+            ])
+        except ValidationError as exc:
+            raise ValidationError(exc.message_dict)
+        
+        return building
         
     @staticmethod
     @transaction.atomic

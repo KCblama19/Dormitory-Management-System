@@ -12,12 +12,14 @@ class StudentQueryset(models.QuerySet):
     student, etc to a campus have been placed in the 
     services 
     """
-    def with_related(self):
+    def with_user(self):
         """
         Return the User connected to this student profile
         and their assignCampus information
         """
-        return self.select_related("user", "")
+        return self.select_related(
+            "user", None
+        )
         
     
     def active(self):

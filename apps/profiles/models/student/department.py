@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 # Abstract Models
-from apps.abstract_models.timestamp_models import TimeStampModel
+from core.abstract_models.timestamp_models import TimeStampModel
 
 # Manager
 from apps.profiles.models.managers.student.departmentQuerySet import DepartmentQuerySet
