@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
 
 # Abstract Models
-from core.abstract_models.timestamp_models import TimeStampModel
+from apps.core.abstract_models.timestamp_models import TimeStampModel
 
 # Managers
 from apps.accommodation.models.managers.campusQuerySet import CampusQuerySet

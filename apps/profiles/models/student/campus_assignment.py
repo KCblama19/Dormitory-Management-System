@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # Abstract Models
-from core.abstract_models.timestamp_models import TimeStampModel
+from apps.core.abstract_models.timestamp_models import TimeStampModel
 from apps.profiles.models.student.profile import Student
 from apps.profiles.models.student.academic_year import AcademicYear
 

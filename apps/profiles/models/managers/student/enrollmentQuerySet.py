@@ -65,7 +65,4 @@ class EnrollmentQuerySet(models.QuerySet):
         return self.filter(
             program_id=program_id,
         )
-        
-    
-        
-    
+            

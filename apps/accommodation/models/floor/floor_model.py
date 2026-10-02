@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # Abstract Models
-from core.abstract_models.timestamp_models import TimeStampModel
+from apps.core.abstract_models.timestamp_models import TimeStampModel
 
 # Manager
 from apps.accommodation.models.managers.floorQuerySet import FloorQuerySet
