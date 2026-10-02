@@ -5,8 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.accounts.models import User
-from apps.profiles.models.student.profile import Student
-from apps.profiles.models.staff.staff_models import Staff
+from apps.profiles.student.models.student_models import Student
+from apps.profiles.staff.models.staff_models import Staff
 
 
 class ClaimService:
