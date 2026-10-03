@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 
 # Abstract Models
 from apps.core.abstract_models.timestamp_models import TimeStampModel
-from apps.profiles.student.models.academic_year import AcademicYear
 
 # Manager
 from apps.profiles.student.models.managers.campusAssignmentQuerySet import StudentAssignCampusQuerySet
@@ -39,17 +38,17 @@ class StudentAssignCampus(TimeStampModel):
         TRANSFERRED = "TRANSFERRED", _("Transferred")
 
     student = models.ForeignKey(
-        "Student",
+        "profiles.Student",
         on_delete=models.CASCADE,
         related_name="campus_assignments"
     )
     campus = models.ForeignKey(
-        "Campus",
+        "accommodation.Campus",
         on_delete=models.PROTECT,
         related_name="student_assignments"
     )
     academic_year = models.ForeignKey(
-        AcademicYear,
+        "profiles.AcademicYear",
         on_delete=models.PROTECT,
         related_name="campus_assignments"
     )
@@ -88,6 +87,8 @@ class StudentAssignCampus(TimeStampModel):
     
     
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["-start_date"]
         verbose_name = _("Student Campus Assignment")
         verbose_name_plural = _("Student Campus Assignments")

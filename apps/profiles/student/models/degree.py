@@ -76,6 +76,8 @@ class Degree(TimeStampModel):
     objects = DegreeQuerySet.as_manager()
     
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["academic_level", "code"]
         verbose_name = _("Degree")
         verbose_name_plural = _("Degrees")

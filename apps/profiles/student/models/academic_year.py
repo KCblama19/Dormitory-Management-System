@@ -56,6 +56,8 @@ class AcademicYear(TimeStampModel):
     objects = AcademicYearQueryset.as_manager()
 
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["-start_date"]
         verbose_name = _("Academic Year")
         verbose_name_plural = _("Academic Years")

@@ -5,14 +5,14 @@ from django.utils.translation import gettext_lazy as _
 class Gender(TimeStampModel):
     
     class GenderType(models.TextChoices):
-        MALE = "M", _("Male"),
+        MALE = "M", _("Male")
         FEMALE = "F", _("Female")
         
         
     code = models.CharField(
         _("Gender Abbreviation"),
         max_length=3,
-        choices=GenderType,
+        choices=GenderType.choices,
         unique=True,
     )
     name = models.CharField(
@@ -23,5 +23,3 @@ class Gender(TimeStampModel):
         default=True,
     )
     
-    class Meta:
-        abstract = True

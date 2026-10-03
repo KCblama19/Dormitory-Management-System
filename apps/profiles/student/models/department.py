@@ -35,6 +35,8 @@ class Department(TimeStampModel):
     objects = DepartmentQuerySet.as_manager()
     
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["code"]
         verbose_name = _("Department")
         verbose_name_plural = _("Departments")

@@ -8,12 +8,6 @@ from django_countries.fields import CountryField
 
 # Abstract Models
 from apps.core.abstract_models.timestamp_models import TimeStampModel
-from apps.core.abstract_models.gender_model import Gender
-
-# Reference Tables
-from apps.profiles.student.models.program import Program
-from apps.profiles.student.models.degree import Degree
-from apps.profiles.student.models.campus_assignment import StudentAssignCampus
 
 # Manager
 from apps.profiles.student.models.managers.manager import StudentQueryset
@@ -85,8 +79,7 @@ class Student(TimeStampModel):
     )
 
     gender = models.ForeignKey(
-        Gender,        
-        max_length=3,
+        "core.Gender",        
         on_delete=models.PROTECT,
         related_name="students"
     )
@@ -123,6 +116,15 @@ class Student(TimeStampModel):
     
     objects =  StudentQueryset.as_manager()
     
+    class Meta:
+        app_label = "profiles"
+        
+        ordering = ["last_name", "first_name"]
+        verbose_name = _("Student Profile")
+        verbose_name_plural = _("Student Profiles")
+        
+        
+        
     def __str__(self):
         return f"{self.student_id} | {self.full_name}"
     
@@ -184,7 +186,9 @@ class Student(TimeStampModel):
         """
         Return the student's current active campus assignment.
         """
-
+        
+        from apps.profiles.student.models.campus_assignment import StudentAssignCampus
+        
         return (
             self.campus_assignments
             .filter(
@@ -234,6 +238,9 @@ class Student(TimeStampModel):
         Returns a human-readable description of the student's
         current academic stage.
         """
+        
+        from apps.profiles.student.models.program import Program
+        from apps.profiles.student.models.degree import Degree
 
         enrollment = self.current_enrollment
 

@@ -18,7 +18,7 @@ class StudentQueryset(models.QuerySet):
         and their assignCampus information
         """
         return self.select_related(
-            "user", "gender", None
+            "user", "gender"
         )
         
     

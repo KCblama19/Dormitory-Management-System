@@ -4,9 +4,7 @@ from django.core.exceptions import ValidationError
 
 # Models and Abstract Models
 from apps.core.abstract_models.timestamp_models import TimeStampModel
-from apps.profiles.student.models.student_models import Student
 from apps.profiles.student.models.program import Program
-from apps.profiles.student.models.academic_year import AcademicYear
 
 # Manager
 from apps.profiles.student.models.managers.enrollmentQuerySet import EnrollmentQuerySet
@@ -45,19 +43,19 @@ class StudentEnrollment(TimeStampModel):
         DEFERRED = "DEFERRED", _("Deferred")
 
     student = models.ForeignKey(
-        Student,
+        "profiles.Student",
         on_delete=models.CASCADE,
         related_name="enrollments"
     )
 
     program = models.ForeignKey(
-        Program,
+        "profiles.Program",
         on_delete=models.PROTECT,
         related_name="student_enrollments"
     )
 
     academic_year = models.ForeignKey(
-        AcademicYear,
+        "profiles.AcademicYear",
         on_delete=models.PROTECT,
         related_name="student_enrollments"
     )
@@ -108,6 +106,8 @@ class StudentEnrollment(TimeStampModel):
     objects = EnrollmentQuerySet.as_manager()
 
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["-start_date"]
         verbose_name = _("Student Enrollment")
         verbose_name_plural = _("Student Enrollments")

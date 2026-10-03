@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 # Abstract Models
 from apps.core.abstract_models.timestamp_models import TimeStampModel
-from apps.core.abstract_models.gender_model import Gender
+from apps.core.models.gender_model import Gender
 
 # Dormitory Models
 from apps.accommodation.models.building.building_model import Building
@@ -65,7 +65,7 @@ class Staff(TimeStampModel):
         max_length=50,
     )
     gender = models.ForeignKey(
-        Gender,
+        "core.Gender",
         max_length=3,
         verbose_name=_("Staff Gender"),
         on_delete=models.PROTECT,
@@ -94,6 +94,8 @@ class Staff(TimeStampModel):
     )
 
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["building", "role", "user"]
         verbose_name = _("staff member")
         verbose_name_plural = _("staff members")
@@ -124,6 +126,7 @@ class Staff(TimeStampModel):
     # Derived Fields
     @property
     def full_name(self):
+        """Generate the full name of the staff"""
         names = [
             self.first_name,
             self.middle_name,

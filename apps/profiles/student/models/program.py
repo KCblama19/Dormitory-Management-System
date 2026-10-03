@@ -113,11 +113,15 @@ class Program(TimeStampModel):
     )
     
     objects = ProgramQuerySet.as_manager()
+    
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["code"]
         verbose_name = _("Program")
         verbose_name_plural = _("Programs")
-
+        
+        
     def clean(self):
         super().clean()
 

@@ -57,6 +57,8 @@ class Major(TimeStampModel):
     objects = MajorQuerySet.as_manager()
 
     class Meta:
+        app_label = "profiles"
+        
         ordering = ["code"]
         verbose_name = _("Major")
         verbose_name_plural = _("Majors")
