@@ -7,6 +7,8 @@ from apps.core.abstract_models.timestamp_models import TimeStampModel
 
 # Manager
 from apps.accommodation.models.managers.floorQuerySet import FloorQuerySet
+
+
 class Floor(TimeStampModel):
     class GenderConfiguration(models.TextChoices):
         MALE = "MALE", _("Male")
@@ -71,6 +73,10 @@ class Floor(TimeStampModel):
         _("Floor Restriction"),
         default=False,
         help_text=_("Show the floor is restricted or preserve for professors or staff")
+    )
+    
+    is_active = models.BooleanField(
+        default=True
     )
     
     objects = FloorQuerySet.as_manager()

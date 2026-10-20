@@ -1,12 +1,15 @@
 from django.db import transaction
 
+from apps.accommodation.models import Bed
+
+# POLICIES
+from dorm_system.apps.core.policies.accommodation_migration_policy import AccommodationMigrationPolicy
+
+# APPLICATION EXCEPTIONS
 from apps.core.exceptions import (
     ValidationError,
     ConflictError,
 )
-
-from apps.accommodation.models import Bed
-
 
 class AccommodationMigrationService:
 
@@ -17,9 +20,18 @@ class AccommodationMigrationService:
     @staticmethod
     def inspect_room_configuration(
         *,
+        actor,
         room,
         new_configuration,
     ):
+        if not AccommodationMigrationPolicy.can_migrate_room(
+            actor,
+            room
+        ): 
+            raise PermissionError(
+                "You do not have permission to "
+                "inspect room configuration"
+            )
 
         current_configuration = (
             room.effective_bed_configuration
@@ -51,9 +63,19 @@ class AccommodationMigrationService:
     @transaction.atomic
     def expand_room(
         *,
+        actor,
         room,
         new_configuration,
     ):
+        
+        if not AccommodationMigrationPolicy.can_migrate_room(
+            actor,
+            room,
+        ):
+            raise PermissionError(
+                "You do not have permission to "
+                "expand room capacity."
+            )
 
         if not new_configuration.is_active:
             raise ValidationError(
@@ -103,9 +125,19 @@ class AccommodationMigrationService:
     @staticmethod
     def prepare_reduction(
         *,
+        actor,
         room,
         new_configuration,
     ):
+        
+        if not AccommodationMigrationPolicy.can_migrate_room(
+            actor,
+            room,            
+        ):
+            raise PermissionError(
+                "You do not have permission to "
+                "reduce this room capacity."
+            )
 
         current_count = room.beds.count()
         target_count = new_configuration.bed_count
@@ -144,10 +176,20 @@ class AccommodationMigrationService:
     @transaction.atomic
     def apply_reduction(
         *,
+        actor,
         room,
         new_configuration,
         beds_to_remove,
     ):
+        
+        if not AccommodationMigrationPolicy.can_migrate_room(
+            actor,
+            room,
+        ):
+            raise PermissionError(
+                "You do not have permission to apply "
+                "this action on this room"
+            )
 
         target_count = new_configuration.bed_count
 
@@ -203,10 +245,20 @@ class AccommodationMigrationService:
     @transaction.atomic
     def reconfigure_room(
         *,
+        actor,
         room,
         new_configuration,
         beds_to_remove=None,
     ):
+        
+        if not AccommodationMigrationPolicy.can_migrate_room(
+            actor,
+            room,
+        ):
+            raise PermissionError(
+                "You do not have permission to reconfigure "
+                "this room."
+            )
 
         if not new_configuration.is_active:
             raise ValidationError(

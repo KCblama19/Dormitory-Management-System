@@ -4,17 +4,33 @@ from django.core.exceptions import ValidationError
 # MODELS
 from apps.accommodation.models import Bed
 
+# POLICIES
+from apps.core.policies import AccommodationPolicy
 
+# APPLICATION EXCEPTIONS
+from apps.core.exceptions import (
+    ValidationError,
+    PermissionDenied,
+)
 class BedService:
 
     @staticmethod
     @transaction.atomic
     def create_bed(
         *,
+        actor,
         room,
         position,
     ):
-
+        if not AccommodationPolicy.can_create_bed(
+            actor,
+            room,
+        ):
+            raise PermissionError(
+                "You do not have permission to create beds "
+                "in this room."
+            )
+    
         configuration = room.effective_bed_configuration
 
         if configuration is None:
@@ -29,8 +45,8 @@ class BedService:
 
         if position > configuration.bed_count:
             raise ValidationError(
-                "Bed position exceeds the room's effective "
-                "bed configuration."
+                "Bed position exceeds the room's configured "
+                "bed capacity."
             )
 
         if Bed.objects.for_room(room).filter(
@@ -59,10 +75,19 @@ class BedService:
     @transaction.atomic
     def update_bed_position(
         *,
+        actor,
         bed,
         position,
     ):
-
+        if not AccommodationPolicy.can_change_bed_position(
+            actor,
+            bed,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to change this "
+                "bed's physical position."
+            )
+            
         configuration = (
             bed.room.effective_bed_configuration
         )
@@ -103,8 +128,17 @@ class BedService:
 
     @staticmethod
     @transaction.atomic
-    def set_available(*, bed):
-
+    def set_available(*, actor, bed):
+        
+        if not AccommodationPolicy.can_manage_bed_operations(
+            actor,
+            bed,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to change this "
+                "bed's status."
+            )
+            
         if bed.status == Bed.Status.OUT_OF_SERVICE:
             raise ValidationError(
                 "An out-of-service bed must be restored before "
@@ -120,8 +154,17 @@ class BedService:
 
     @staticmethod
     @transaction.atomic
-    def set_maintenance(*, bed):
-
+    def set_maintenance(*, actor, bed):
+        
+        if not AccommodationPolicy.can_manage_bed_operations(
+            actor,
+            bed,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to change this "
+                "bed's status."
+            )
+            
         bed.status = Bed.Status.MAINTENANCE
 
         bed.full_clean()
@@ -131,8 +174,16 @@ class BedService:
 
     @staticmethod
     @transaction.atomic
-    def set_out_of_service(*, bed):
-
+    def set_out_of_service(*, actor, bed):
+        
+        if not AccommodationPolicy.can_manage_bed_operations(
+            actor,
+            bed
+        ):
+            raise PermissionDenied(
+                "You do not have permission to change "
+                "this bed status."
+            )
         if bed.is_occupied:
             raise ValidationError(
                 "An occupied bed cannot be placed out of service."
@@ -147,8 +198,16 @@ class BedService:
 
     @staticmethod
     @transaction.atomic
-    def restore_bed(*, bed):
-
+    def restore_bed(*, actor, bed):
+        if not AccommodationPolicy.can_manage_bed_operations(
+            actor,
+            bed
+        ):
+            raise PermissionDenied(
+                "You do not have permission to change "
+                "this bed status."
+            )
+        
         if bed.status != Bed.Status.OUT_OF_SERVICE:
             raise ValidationError(
                 "Only out-of-service beds can be restored."

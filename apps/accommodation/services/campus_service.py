@@ -1,14 +1,23 @@
+from typing import Any
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
 # MODELS
 from apps.accommodation.models.campus.campus_model import Campus
 
+# POLICIES
+from apps.core.policies import AccommodationPolicy
+
+# APPLICATION EXCEPTIONS
+from apps.core.exceptions import PermissionDenied
+
+
 class CampusService:
     @staticmethod
     @transaction.atomic
     def create_campus(
         *,
+        actor,
         university,
         name: str,
         code: str,
@@ -19,6 +28,14 @@ class CampusService:
         country=None,
         description="",
     ) -> Campus:
+        
+        if not AccommodationPolicy.can_create_campus(
+            actor,
+        ):
+            raise PermissionDenied(
+                "Only administrator can create campuses."
+            )
+            
         if not university.is_active:
             raise ValidationError(
                 "Cannot create a campus under an " 
@@ -68,7 +85,21 @@ class CampusService:
     
     @staticmethod
     @transaction.atomic
-    def activate_campus(*, campus: Campus) -> Campus:
+    def activate_campus(
+        *, 
+        actor: Any,
+        campus: Campus
+    ) -> Campus:
+        
+        if not AccommodationPolicy.can_activate_campus(
+            actor,
+            campus,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to "
+                "activate this campus."
+            )
+            
         if not campus.university.is_active:
             raise ValidationError(
                 "Cannot activate a campus under an "
@@ -83,7 +114,21 @@ class CampusService:
     
     @staticmethod
     @transaction.atomic
-    def deactivate_campus(*, campus: Campus) -> Campus:
+    def deactivate_campus(
+        *, 
+        actor: Any,
+        campus: Campus,
+    ) -> Campus:
+        
+        if not AccommodationPolicy.can_deactivate_campus(
+            actor,
+            campus,
+        ):
+            raise PermissionDenied(
+                "You do not have the permission "
+                "to deactivate this campus."
+            )
+            
         if campus.buildings.active().exists():
             raise ValidationError(
                 "Campus cannot be deactivated while it "

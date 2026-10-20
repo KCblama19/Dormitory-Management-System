@@ -1,10 +1,17 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 
+# MODELS
 from apps.profiles.staff.models.staff_models import Staff
+
+# POLICIES
+from apps.core.policies import StaffPolicy
+
+# APPLICATION EXCEPTIONS
 from apps.core.exceptions import (
     ValidationError,
     ConflictError,
+    PermissionDenied,
 )
 
 
@@ -14,11 +21,23 @@ class StaffService:
     @transaction.atomic
     def create_staff(
         *,
+        actor,
         user,
         building,
-        role=Staff.Role.BUILDING_STAFF,
+        role: str=Staff.Role.BUILDING_STAFF,
     ):
-
+        """
+        
+        """
+        if not StaffPolicy.can_create_staff(
+            actor,
+            building,
+        ):
+            raise PermissionDenied(
+                "This action is reserve for admin and "
+                "or the building manager of this building."
+            )
+            
         if not user.is_staff_member:
             raise ValidationError(
                 "User account must have STAFF account type."
@@ -67,10 +86,20 @@ class StaffService:
     @transaction.atomic
     def assign_staff_to_building(
         *,
+        actor,
         staff,
         building,
         role=None,
     ):
+        """
+        
+        """
+        if not StaffPolicy.can_assign_staff_to_building(
+            actor, staff,
+        ):
+            raise PermissionDenied(
+                "This action is reserve for admin"
+            )
 
         target_role = role or staff.role
 
@@ -104,9 +133,16 @@ class StaffService:
     @transaction.atomic
     def change_role(
         *,
+        actor,
         staff,
         role,
     ):
+        if not StaffPolicy.can_change_staff_role(
+            actor, staff,
+        ):
+            raise PermissionDenied(
+                "This action is reserve for admin"
+            )
 
         if role not in {
             Staff.Role.BUILDING_MANAGER,
@@ -137,7 +173,15 @@ class StaffService:
 
     @staticmethod
     @transaction.atomic
-    def activate_staff(*, staff):
+    def activate_staff(*, actor, staff):
+        
+        if not StaffPolicy.can_activate_staff(
+            actor, staff,
+        ):
+            raise PermissionDenied(
+                "This action is reserved for admin and "
+                "building manager of this building"
+            )
 
         staff.status = Staff.Status.ACTIVE
         staff.user.is_active = True
@@ -158,7 +202,15 @@ class StaffService:
 
     @staticmethod
     @transaction.atomic
-    def deactivate_staff(*, staff):
+    def deactivate_staff(*, actor, staff):
+        if not StaffPolicy.can_deactivate_staff(
+            actor,
+            staff,
+        ):
+            raise PermissionDenied(
+                "This action is reserved for admin and the "
+                "building manager of this building"
+            )
 
         staff.status = Staff.Status.INACTIVE
         staff.user.is_active = False
@@ -181,10 +233,19 @@ class StaffService:
     @transaction.atomic
     def transfer_staff(
         *,
+        actor,
         staff,
         new_building,
         new_role=None,
     ):
+        if not StaffPolicy.can_transfer_staff(
+            actor,
+            staff,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to assign staff "
+                "to this building."
+            )
 
         target_role = new_role or staff.role
 

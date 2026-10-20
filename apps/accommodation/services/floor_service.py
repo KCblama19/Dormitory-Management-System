@@ -3,8 +3,17 @@ from django.db import transaction
 # MODELS
 from apps.accommodation.models.floor.floor_model import Floor
 
+# POLICIES
+from apps.core.policies import AccommodationPolicy
+
 # Exceptions
-from django.core.exceptions import ValidationError
+from apps.core.exceptions import (
+    ValidationError,
+    ConflictError,
+    PermissionDenied,
+)
+
+
 class FloorService:
     
     @staticmethod
@@ -33,6 +42,7 @@ class FloorService:
     @transaction.atomic
     def create_floor(
         *,
+        actor,
         building,
         max_floors_per_room,
         gender_configuration=None,
@@ -40,9 +50,18 @@ class FloorService:
         restriction_note=None,
         is_restricted=False
     ):
+        if not AccommodationPolicy.can_create_floor(
+            actor,
+            building,
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to create floors "
+                "in this building."
+            )
+            
         building = (
             type(building).objects
-            .select_for_updates()
+            .select_for_update()
             .get(pk=building.pk)
         )
         
@@ -87,12 +106,24 @@ class FloorService:
                 "Floor creation failed"
             )
             
-        return Floor
+        return floor
     
     @staticmethod
     @transaction.atomic
-    def update_floor(floor, **changes):
-        
+    def update_floor(
+        actor,
+        floor, 
+        **changes
+    ):
+        if not AccommodationPolicy.can_update_floor(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to update floors "
+                "in this building."
+            )
+            
         allowed_fields = {
             "max_rooms_per_floor",
             "gender_configuration",
@@ -138,8 +169,17 @@ class FloorService:
 
     @staticmethod
     @transaction.atomic
-    def activate_floor(floor):
-
+    def activate_floor(actor, floor):
+        
+        if not AccommodationPolicy.can_activate_floor(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to activate "
+                "this floor."
+            )
+            
         if not floor.building.is_active:
             raise ValidationError(
                 "Cannot activate a floor inside an inactive building."
@@ -152,8 +192,17 @@ class FloorService:
 
     @staticmethod
     @transaction.atomic
-    def deactivate_floor(floor):
-
+    def deactivate_floor(actor, floor):
+        
+        if not AccommodationPolicy.can_deactivate_floor(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to deactivate " 
+                "this building."
+            )
+            
         if floor.rooms.filter(
             beds__status="AVAILABLE"
         ).exists():
@@ -168,8 +217,16 @@ class FloorService:
 
     @staticmethod
     @transaction.atomic
-    def set_maintenance(floor):
-
+    def set_maintenance(actor, floor):
+        
+        if not AccommodationPolicy.can_set_maintenance(
+            actor, floor
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "set this floor for maintenance."
+            )
+            
         floor.status = Floor.FloorStatus.MAINTENANCE
         floor.save(update_fields=["status"])
 
@@ -178,10 +235,20 @@ class FloorService:
     @staticmethod
     @transaction.atomic
     def set_restriction(
+        actor,
         floor,
         note=None,
     ):
-
+        
+        if not AccommodationPolicy.can_set_floor_restriction(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to "
+                "restrict this floor."
+            )
+            
         if not note:
             raise ValidationError(
                 "A restriction note is required."
@@ -201,8 +268,16 @@ class FloorService:
 
     @staticmethod
     @transaction.atomic
-    def remove_restriction(floor):
-
+    def remove_restriction(actor, floor):
+        
+        if not AccommodationPolicy.can_remove_floor_restriction(
+            actor, floor
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "remove this floor restriction."
+            )
+            
         floor.is_restricted = False
         floor.restriction_note = None
 
@@ -218,9 +293,19 @@ class FloorService:
     @staticmethod
     @transaction.atomic
     def set_bed_configuration_override(
+        actor,
         floor,
         configuration,
     ):
+        
+        if not AccommodationPolicy.can_change_floor_bed_configuration(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You are not allowed to configure or update this "
+                "building bed configuration."
+            )
 
         if not configuration.is_active:
             raise ValidationError(
@@ -240,8 +325,17 @@ class FloorService:
 
     @staticmethod
     @transaction.atomic
-    def remove_bed_configuration_override(floor):
-
+    def remove_bed_configuration_override(actor, floor):
+        
+        if not AccommodationPolicy.can_change_floor_bed_configuration(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You are not allow to configure or remove this "
+                "building floor bed configuration"
+            )
+            
         floor.bed_configuration_override = None
 
         floor.save(

@@ -4,18 +4,35 @@ from django.db.models import Count
 # MODELS
 from apps.accommodation.models.building.building_model import Building
 
-from django.core.exceptions import ValidationError
+# POLICIES
+from apps.core.policies import AccommodationPolicy
+
+# APPLICATION EXCEPTIONS
+from apps.core.exceptions import (
+    ValidationError,
+    PermissionDenied
+)
 
 class BuildingService:
     @staticmethod
     @transaction.atomic
     def create_building(
-        *, campus,
+        *, 
+        actor,
+        campus,
         building_number, name,
         code, student_population,
         gender_policy, max_floors,
         default_bed_configuration,
     ):
+        
+        if not AccommodationPolicy.can_create_building(
+            actor,
+        ):
+            raise PermissionDenied(
+                "Only administrators can create buildings."
+            )
+            
         if not campus.is_active:
             raise ValidationError(
                 "Cannot create a building on an inactive campus."
@@ -68,8 +85,21 @@ class BuildingService:
     
     @ staticmethod
     @transaction.atomic
-    def update_building(building, **changes):
+    def update_building(
+        actor,
+        building: Building, 
+        **changes
+    ) -> Building:
         
+        if not AccommodationPolicy.can_update_building(
+            actor,
+            building
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "update this building."
+            )
+            
         allowed_fields = {
             "building_number",
             "name",
@@ -153,14 +183,39 @@ class BuildingService:
         
     @staticmethod
     @transaction.atomic
-    def activate_building(building):
+    def activate_building(
+        actor,
+        building: Building
+    ) -> Building:
+        
+        if not AccommodationPolicy.can_activate_building(
+            actor,
+            building
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "activate this building."
+            )
+            
         building.is_active = True
         building.save(update_fields=["is_active"])
         
     @staticmethod
     @transaction.atomic
-    def deactivate_building(building):
+    def deactivate_building(
+        actor,
+        building: Building,
+    ) -> Building:
         
+        if not AccommodationPolicy.can_deactivate_building(
+            actor,
+            building
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "deactivate this building."
+            )
+            
         if building.floor.filter(
             status="ACTIVE"
         ).exists():
@@ -176,8 +231,21 @@ class BuildingService:
     
     @staticmethod
     @transaction.atomic
-    def change_gender_policy(building, gender_policy):
+    def change_gender_policy(
+        actor,
+        building: Building, 
+        gender_policy
+    ) -> Building:
         
+        if not AccommodationPolicy.can_change_building_gender_policy(
+            actor,
+            building,
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "change this building gender configuration."
+            )
+            
         active_floors = building.floors.filter(
             status="ACTIVE"
         )
@@ -202,8 +270,21 @@ class BuildingService:
         
     @staticmethod
     @transaction.atomic
-    def change_student_population(building, student_population):
+    def change_student_population(
+        actor,
+        building: Building, 
+        student_population
+    ) -> Building:
         
+        if not AccommodationPolicy.can_change_building_population(
+            actor,
+            building,
+        ):
+            raise PermissionDenied(
+                "You do not have the permission to "
+                "change this building student population."
+            )
+            
         building.student_population = student_population
         building.full_clean()
         building.save(update_fields=["student_population"])
@@ -213,9 +294,19 @@ class BuildingService:
     @staticmethod
     @transaction.atomic
     def change_default_bed_configuration(
-        building,
+        actor,
+        building: Building,
         configuration,
-    ):
+    ) -> Building:
+        
+        if not AccommodationPolicy.can_change_default_bed_configuration(
+            actor,
+            building,
+        ):
+            raise ProcessLookupError(
+                "You do not have the permission to change "
+                "this building's default bed configuration."
+            )
         if not configuration.is_active:
             raise ValidationError(
                 "An inactive configuration cannot become"

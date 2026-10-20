@@ -3,6 +3,14 @@ from django.core.exceptions import ValidationError
 
 from apps.accommodation.models import BedConfiguration
 
+# POLICIES
+from apps.core.policies import AccommodationPolicy
+
+# APPLICATION EXCEPTIONS
+from apps.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 
 class BedConfigurationService:
 
@@ -10,10 +18,19 @@ class BedConfigurationService:
     @transaction.atomic
     def create_configuration(
         *,
+        actor,
         name,
         bed_count,
         description="",
     ):
+        
+        if not AccommodationPolicy.can_create_bed_configuration(
+            actor,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to create "
+                "bed configuration."
+            )
 
         if bed_count < 2:
             raise ValidationError(
@@ -46,11 +63,20 @@ class BedConfigurationService:
     @transaction.atomic
     def update_configuration(
         *,
+        actor,
         configuration,
         name=None,
         bed_count=None,
         description=None,
     ):
+        if not AccommodationPolicy.can_update_bed_configuration(
+            actor,
+            configuration,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to update "
+                "bed configuration."
+            )
 
         if name is not None:
             configuration.name = name.strip()
@@ -77,8 +103,17 @@ class BedConfigurationService:
 
     @staticmethod
     @transaction.atomic
-    def activate_configuration(*, configuration):
-
+    def activate_configuration(*, actor, configuration):
+        
+        if not AccommodationPolicy.can_activate_bed_configuration(
+            actor,
+            configuration,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to activate "
+                "bed configuration."
+            )
+            
         configuration.is_active = True
         configuration.full_clean()
         configuration.save(
@@ -89,8 +124,16 @@ class BedConfigurationService:
 
     @staticmethod
     @transaction.atomic
-    def deactivate_configuration(*, configuration):
-
+    def deactivate_configuration(*, actor, configuration):
+        
+        if not AccommodationPolicy.can_deactivate_bed_configuration(
+            actor,
+            configuration,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to deactivate "
+                "bed configuration."
+            )
         if (
             configuration.default_for_buildings.exists()
             or configuration.floor_overrides.exists()

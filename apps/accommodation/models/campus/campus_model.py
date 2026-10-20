@@ -10,6 +10,9 @@ from apps.core.abstract_models.timestamp_models import TimeStampModel
 # Managers
 from apps.accommodation.models.managers.campusQuerySet import CampusQuerySet
 
+# POLICIES
+from apps.core.policies import AccommodationPolicy
+
 """
 This Model represents a physical campus belonging to a 
 university.

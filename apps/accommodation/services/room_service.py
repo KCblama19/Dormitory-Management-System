@@ -4,6 +4,16 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 # MODELS
 from apps.accommodation.models import Room
 
+# POLICIES
+from apps.core.policies import AccommodationPolicy
+
+# APPLICATION EXCEPTION
+from apps.core.exceptions import (
+    ValidationError,
+    PermissionDenied,
+    ConflictError,
+)
+
 
 class RoomService:
 
@@ -31,10 +41,19 @@ class RoomService:
     @transaction.atomic
     def create_room(
         *,
+        actor,
         floor,
         bed_configuration_override=None,
     ):
-
+        if not AccommodationPolicy.can_create_room(
+            actor,
+            floor,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to create room "
+                "in this building."
+            )
+            
         if floor.status != "ACTIVE":
             raise ValidationError(
                 "Rooms can only be created on active floors."
@@ -70,9 +89,19 @@ class RoomService:
     @transaction.atomic
     def update_room(
         *,
+        actor,
         room,
         bed_configuration_override=None,
     ):
+        
+        if not AccommodationPolicy.can_update_room(
+            actor,
+            room,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to update " 
+                "room in this building."
+            )
 
         if bed_configuration_override is not None:
 
@@ -105,9 +134,19 @@ class RoomService:
     @transaction.atomic
     def set_bed_configuration_override(
         *,
+        actor,
         room,
         configuration,
     ):
+        
+        if not AccommodationPolicy.can_manage_room_operations(
+            actor,
+            room,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to set bed "
+                "configuration for this room."
+            )
 
         if not configuration.is_active:
             raise ValidationError(
@@ -133,8 +172,16 @@ class RoomService:
 
     @staticmethod
     @transaction.atomic
-    def remove_bed_configuration_override(*, room):
-
+    def remove_bed_configuration_override(*, actor, room):
+        
+        if not AccommodationPolicy.can_manage_room_operations(
+            actor,
+            room,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to update bed "
+                "configuration for this room."
+            )
         room.bed_configuration_override = None
 
         room.full_clean()

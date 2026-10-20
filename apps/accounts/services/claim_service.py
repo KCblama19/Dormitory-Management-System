@@ -4,13 +4,32 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
 
+# MODELS
 from apps.accounts.models import User
 from apps.profiles.student.models.student_models import Student
 from apps.profiles.staff.models.staff_models import Staff
 
+# POLICIES
+from apps.core.policies import AccountPolicy
+
+# UTILITY EXCEPTIONS
+from apps.core.exceptions import PermissionDenied
+
 
 class ClaimService:
     
+    @staticmethod
+    def authorize_admin_assistance(*, actor, student):
+        if not AccountPolicy.can_assist_student_claim(
+            actor,
+            student,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to assist this "
+                "student with account claiming."
+            )
+            
+
     @staticmethod
     def find_claim_user(identifier: str) -> User | None:
         """
