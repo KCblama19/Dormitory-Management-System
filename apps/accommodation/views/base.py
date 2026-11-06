@@ -67,3 +67,8 @@ class AccommodationBaseView(LoginRequiredMixin, View):
 
     def add_error_message(self, message):
         messages.error(self.request, message)
+
+
+class BuildingBaseView(AccommodationBaseView):
+    def get_fallback_url(self):
+        return "accommodation:building-list"

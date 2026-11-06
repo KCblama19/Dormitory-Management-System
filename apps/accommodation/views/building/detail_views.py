@@ -1,27 +1,37 @@
-from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404, render
 
 from apps.accommodation.models.building.building_model import Building
-from apps.accommodation.views.base import BuildingScopedDetailView
+from apps.accommodation.views.base import BuildingBaseView
+
+from apps.core.exceptions import PermissionDenied
+from apps.core.policies import AccommodationPolicy
 
 
-class BuildingDetailView(BuildingScopedDetailView):
-    model = Building
-    template_name = "accommodation/building/detail.html"
-    context_object_name = "building"
+class BuildingDetailView(BuildingBaseView):
+    template_name = "accommodation/building/building_detail.html"
 
-    policy_method = "can_view_building"
-
-    # A building is the scope boundary for this resource.
-    building_lookup = "pk"
-
-    def get_queryset(self):
-        return (
-            super()
-            .get_queryset()
-            .select_related(
+    def get(self, request, *args, **kwargs):
+        building = get_object_or_404(
+            Building.objects.select_related(
                 "campus",
                 "campus__university",
                 "default_bed_configuration",
+            ),
+            pk=kwargs["pk"],
+        )
+
+        if not AccommodationPolicy.can_view_building(
+            request.user,
+            building,
+        ):
+            return self.handle_domain_error(
+                PermissionDenied(
+                    "You do not have permission to view this building."
+                )
             )
-            .prefetch_related("floors")
+
+        return render(
+            request,
+            self.template_name,
+            {"building": building},
         )

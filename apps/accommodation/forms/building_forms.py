@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from apps.accommodation.models.building.building_model import Building
 from apps.accommodation.models.campus.campus_model import Campus
@@ -20,7 +21,38 @@ class BuildingForm(StyledFormMixin, forms.ModelForm):
             "max_floors",
             "default_bed_configuration",
         )
-    
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # A building belongs to its original campus. Campus selection is
+        # therefore only available when creating a new building.
+        if self.instance and self.instance.pk:
+            self.fields.pop("campus")
+
+        else:
+            self.fields["campus"].queryset = Campus.objects.filter(
+                is_active=True
+            )
+
+        # New buildings must use an active configuration. When editing,
+        # retain the current configuration as an option even if inactive.
+        configuration_queryset = BedConfiguration.objects.filter(
+            is_active=True
+        )
+
+        if self.instance and self.instance.pk:
+            configuration_queryset = (
+                BedConfiguration.objects.filter(
+                    Q(is_active=True)
+                    | Q(pk=self.instance.default_bed_configuration_id)
+                )
+            )
+
+        self.fields["default_bed_configuration"].queryset = (
+            configuration_queryset
+        )
+
     def clean_name(self):
         return self.cleaned_data["name"].strip()
 
@@ -55,5 +87,5 @@ class ChangeBuildingPopulationForm(StyledFormMixin, forms.Form):
 
 class ChangeDefaultBedConfigurationForm(StyledFormMixin, forms.Form):
     default_bed_configuration = forms.ModelChoiceField(
-        queryset=BedConfiguration.objects.active(),
+        queryset=BedConfiguration.objects.filter(is_active=True),
     )

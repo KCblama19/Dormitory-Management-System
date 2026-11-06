@@ -46,4 +46,51 @@ urlpatterns = [
         CampusDeactivateView.as_view(),
         name="campus-deactivate",
     ),
+    
+    # Building routes
+    path(
+        "buildings/",
+        BuildingListView.as_view(),
+        name="building-list",
+    ),
+    path(
+        "buildings/create/",
+        BuildingCreateView.as_view(),
+        name="building-create",
+    ),
+    path(
+        "buildings/<int:pk>/",
+        BuildingDetailView.as_view(),
+        name="building-detail",
+    ),
+    path(
+        "buildings/<int:pk>/update/",
+        BuildingUpdateView.as_view(),
+        name="building-update",
+    ),
+    path(
+        "buildings/<int:pk>/activate/",
+        BuildingActivateView.as_view(),
+        name="building-activate",
+    ),
+    path(
+        "buildings/<int:pk>/deactivate/",
+        BuildingDeactivateView.as_view(),
+        name="building-deactivate",
+    ),
+    path(
+        "buildings/<int:pk>/change-gender-policy/",
+        BuildingGenderPolicyChangeView.as_view(),
+        name="building-change-gender-policy",
+    ),
+    path(
+        "buildings/<int:pk>/change-population/",
+        BuildingPopulationChangeView.as_view(),
+        name="building-change-population",
+    ),
+    path(
+        "buildings/<int:pk>/change-default-bed-configuration/",
+        BuildingDefaultBedConfigurationChangeView.as_view(),
+        name="building-change-default-bed-configuration",
+    ),
 ]

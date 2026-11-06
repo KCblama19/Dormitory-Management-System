@@ -378,7 +378,7 @@ class BuildingService:
         # Normalize values before performing duplicate checks.
         building_number = str(building_number).strip()
         name = name.strip()
-        code = code.strip()
+        code = code.strip().upper()
 
         if not building_number or not name or not code:
             raise ValidationError(
@@ -486,7 +486,7 @@ class BuildingService:
             value = changes.pop("code")
 
             if value is not None:
-                building.code = value.strip()
+                building.code = value.strip().upper()
 
         # Validate the floor limit only when the caller supplied it.
         if "max_floors" in changes:
