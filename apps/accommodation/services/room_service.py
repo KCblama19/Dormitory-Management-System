@@ -292,7 +292,6 @@ class RoomService:
         room = Room(
             floor=locked_floor,
             position=position,
-            bed_configuration_override=None,
         )
 
         if bed_configuration_override is not None:
