@@ -24,13 +24,16 @@ class BedConfigurationForm(
                 attrs={"rows": 4},
             ),
         }
+        
+    def clean_name(self):
+        return self.cleaned_data["name"].strip()
 
     def clean_bed_count(self):
         bed_count = self.cleaned_data["bed_count"]
 
-        if bed_count < 2:
+        if bed_count < 1:
             raise forms.ValidationError(
-                "A bed configuration must contain at least two beds."
+                "A bed configuration must contain at least one beds."
             )
 
         return bed_count

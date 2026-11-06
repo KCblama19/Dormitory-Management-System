@@ -55,6 +55,7 @@ class CreateFloorForm(StyledFormMixin, forms.Form):
 
     gender_configuration = forms.ChoiceField(
         choices=Floor.GenderConfiguration.choices,
+        required=False,
     )
 
     bed_configuration_override = forms.ModelChoiceField(

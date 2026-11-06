@@ -85,7 +85,8 @@ class Room(TimeStampModel):
 
     def __str__(self):
         return self.full_code
-
+    
+    
     @property
     def building(self):
         """

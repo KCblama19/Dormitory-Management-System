@@ -20,6 +20,9 @@ class BuildingForm(StyledFormMixin, forms.ModelForm):
             "max_floors",
             "default_bed_configuration",
         )
+    
+    def clean_name(self):
+        return self.cleaned_data["name"].strip()
 
     def clean_building_number(self):
         return self.cleaned_data["building_number"].strip()
@@ -51,6 +54,6 @@ class ChangeBuildingPopulationForm(StyledFormMixin, forms.Form):
 
 
 class ChangeDefaultBedConfigurationForm(StyledFormMixin, forms.Form):
-    bed_configuration = forms.ModelChoiceField(
+    default_bed_configuration = forms.ModelChoiceField(
         queryset=BedConfiguration.objects.active(),
     )

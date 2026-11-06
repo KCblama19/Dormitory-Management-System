@@ -104,7 +104,7 @@ class AccommodationPolicy(BasePolicy):
             return True
 
         if building is None:
-            return cls.is_staff_account(actor)
+            return False
 
         return cls.works_in_building(actor, building)
 
@@ -349,29 +349,29 @@ class AccommodationPolicy(BasePolicy):
         return cls.is_staff_account(actor) or cls.is_global_admin(actor)
 
     @classmethod
-    def can_create_bed_configuration(cls, actor):
+    def can_create_bed_configuration(cls, actor, building):
         """
         Bed configurations affect accommodation capacity and are
         configuration-level operations.
         """
         return (
             cls.is_global_admin(actor)
-            or cls.is_building_manager(actor)
+            or cls.is_building_manager(actor, building)
         )
 
     @classmethod
-    def can_update_bed_configuration(cls, actor, configuration):
+    def can_update_bed_configuration(cls, actor, building, configuration):
         if cls.is_global_admin(actor):
             return configuration is not None
 
-        return cls.is_building_manager(actor)
+        return cls.manages_building(actor, building)
 
     @classmethod
-    def can_activate_bed_configuration(cls, actor, configuration):
+    def can_activate_bed_configuration(cls, actor, building, configuration):
         if cls.is_global_admin(actor):
             return configuration is not None
 
-        return cls.is_building_manager(actor)
+        return cls.manages_building(actor, building)
 
     @classmethod
     def can_deactivate_bed_configuration(cls, actor, configuration):
@@ -449,7 +449,7 @@ class AccommodationPolicy(BasePolicy):
 
         return cls.manages_building(actor, building)
     
-    @staticmethod
+    @classmethod
     def can_manage_bed_operations(
         cls, actor, bed
     ):

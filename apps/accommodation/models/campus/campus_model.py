@@ -10,8 +10,6 @@ from apps.core.abstract_models.timestamp_models import TimeStampModel
 # Managers
 from apps.accommodation.models.managers.campusQuerySet import CampusQuerySet
 
-# POLICIES
-from apps.core.policies import AccommodationPolicy
 
 """
 This Model represents a physical campus belonging to a 
@@ -33,7 +31,7 @@ class Campus(TimeStampModel):
         max_length=255,
     )
     code = models.CharField(
-        _("Campus Name Abbreviation"),
+        _("Campus Code"),
         max_length=20,
     )
     postal_code = models.CharField(

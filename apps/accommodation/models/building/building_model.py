@@ -42,6 +42,7 @@ class Building(TimeStampModel):
     student_population = models.CharField(
         _("Student Population"),
         choices=StudentPopulation.choices,
+        max_length=25,
         help_text=_("Determines whether this building accommodates international "
                    "or Chinese students."
         ),
@@ -49,6 +50,7 @@ class Building(TimeStampModel):
     gender_policy = models.CharField(
         _("Gender Policy"),
         choices=GenderPolicy.choices,
+        max_length=25,
         help_text=_("Determines whether this building accommodates a specific gender "
                    "or Mixed genders."
         ),

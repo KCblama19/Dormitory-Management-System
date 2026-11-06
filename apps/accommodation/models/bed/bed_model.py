@@ -34,6 +34,7 @@ class Bed(TimeStampModel):
         AVAILABLE = "AVAILABLE", _("Available")
         MAINTENANCE = "MAINTENANCE", _("Maintenance")
         OUT_OF_SERVICE = "OUT_OF_SERVICE", _("Out of service")
+        RETIRED = "RETIRED", _("Retired")
 
     room = models.ForeignKey(
         "accommodation.Room",
@@ -189,6 +190,21 @@ class Bed(TimeStampModel):
                     )
                 }
             )
+            
+        # Retired beds remain in the database for historical purposes.
+        # Their previous positions must not prevent a room from reducing
+        # its current bed capacity.
+        if self.status == self.Status.RETIRED:
+            return
+
+        configuration = self.room.effective_bed_configuration
+
+        if configuration and self.position > configuration.bed_count:
+            raise ValidationError({
+                "position": _(
+                    "Bed position cannot exceed the room's configured capacity."
+                )
+            })
 
         configuration = self.room.effective_bed_configuration
 

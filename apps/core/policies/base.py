@@ -6,7 +6,7 @@ class BasePolicy:
 
         "Is this actor allowed to perform this operation?"
 
-    This Policies should not:
+    This Policies do not:
     - modify database records
     - perform business operations
     - validate form data
@@ -127,7 +127,7 @@ class BasePolicy:
         A Building Manager can manage only their assigned building.
         Building Staff cannot manage building-level configuration
         
-        There are plans to include a CAMPUS manager later.
+        There are plans to include a CAMPUS-level manager later.
         """
         if cls.is_global_admin(actor):
             return building is not None

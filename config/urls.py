@@ -23,6 +23,7 @@ from .views import LandingPageView
 urlpatterns = [
     path("", LandingPageView.as_view(),  name="landing_page"),
     path('accounts/', include("apps.accounts.urls")),
+    path('profiles/', include("apps.profiles.urls")),
     path('accommodation/', include("apps.accommodation.urls")),
     path('admin/', admin.site.urls)
 ]

@@ -25,8 +25,9 @@ class BedConfiguration(TimeStampModel):
               |
         - Room override
         
-    The actual physical Bed records remain the source 
-    of truth existing accommodation units.
+    The actual physical Bed records represent the beds that exist.
+    The configuration defines the maximum permitted bed position for
+    rooms inheriting that configuration.
     
     """
     
@@ -36,8 +37,8 @@ class BedConfiguration(TimeStampModel):
         max_length=100,
         unique=True,
         help_text=_(
-            "Human-readable name for this accommodation configuration"
-            "e.g., '2-Bed Room", '4-Bed Room'
+            "Human-readable name for this accommodation configuration, "
+            "e.g., '2-Bed Room', '4-Bed Room'."
         ),
     )
     
@@ -61,8 +62,8 @@ class BedConfiguration(TimeStampModel):
         _("Configuration Status"),
         default=True,
         help_text=_(
-            "Whether this configuration is currently"
-            "for use"
+            "Whether this configuration is currently "
+            "active and available for use"
         ),
     )
     

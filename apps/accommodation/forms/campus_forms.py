@@ -2,7 +2,6 @@ from django import forms
 
 # MODELS
 from apps.accommodation.models.campus.campus_model import Campus
-from apps.university.models import University
 
 # SHARE UTILITY FORMS
 from apps.core.forms import StyledFormMixin
