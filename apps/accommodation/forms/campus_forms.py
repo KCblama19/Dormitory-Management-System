@@ -20,13 +20,20 @@ class CampusForm(StyledFormMixin, forms.ModelForm):
             "province",
             "country",
             "description",
-            "is_active",
         )
         widgets = {
             "description": forms.Textarea(
                 attrs={"rows": 4},
             ),
         }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # A campus's parent university is selected only during creation.
+        # Editing an existing campus must not change its parent.
+        if self.instance and self.instance.pk:
+            self.fields.pop("university")
 
     def clean_code(self):
         return self.cleaned_data["code"].strip().upper()

@@ -15,10 +15,111 @@ from apps.core.exceptions import (
     PermissionDenied,
     ValidationError,
     ConflictError,
+    NotFoundError,
 )
 
 
 class CampusService:
+    """
+    Handles campus creation, configuration updates, and operational
+    state changes.
+
+    Views and forms are responsible for collecting and validating
+    user input. This service remains responsible for authorization,
+    business rules, model validation, and persistence.
+    """
+
+    # =========================================================
+    # PRIVATE HELPERS
+    # =========================================================
+
+    @staticmethod
+    def _get_locked_campus(campus: Campus) -> Campus:
+        """
+        Retrieve the latest campus record and acquire a database lock.
+
+        This prevents concurrent operations from modifying the same
+        campus simultaneously on databases that support row locking.
+        """
+        try:
+            return (
+                Campus.objects
+                .select_for_update()
+                .select_related("university")
+                .get(pk=campus.pk)
+            )
+
+        except Campus.DoesNotExist as exc:
+            raise NotFoundError(
+                "The requested campus could not be found."
+            ) from exc
+
+    @staticmethod
+    def _normalize_text_fields(
+        *,
+        name: str,
+        code: str,
+        postal_code: str,
+        address: str,
+        city: str,
+        province: str,
+        description: str,
+    ) -> dict:
+        """
+        Normalize text values independently of the forms.
+
+        Services can be called from management commands, background
+        processes, or other services, so normalization must not depend
+        exclusively on form validation.
+        """
+        return {
+            "name": name.strip(),
+            "code": code.strip().upper(),
+            "postal_code": postal_code.strip(),
+            "address": address.strip(),
+            "city": city.strip(),
+            "province": province.strip(),
+            "description": description.strip(),
+        }
+
+    @staticmethod
+    def _save_campus(campus: Campus) -> Campus:
+        """
+        Run model validation and persist a campus.
+
+        A nested atomic block provides a savepoint. This allows an
+        IntegrityError to be translated without leaving the outer
+        transaction in a broken state.
+        """
+        try:
+            with transaction.atomic():
+                campus.full_clean()
+                campus.save()
+
+        except DjangoValidationError as exc:
+            messages = (
+                "; ".join(
+                    f"{field}: {', '.join(errors)}"
+                    for field, errors in exc.message_dict.items()
+                )
+                if hasattr(exc, "message_dict")
+                else "; ".join(exc.messages)
+            )
+
+            raise ValidationError(messages) from exc
+
+        except IntegrityError as exc:
+            raise ConflictError(
+                "The campus could not be saved because another "
+                "campus already uses the specified name or code "
+                "for this university."
+            ) from exc
+
+        return campus
+
+    # =========================================================
+    # CREATE
+    # =========================================================
 
     @staticmethod
     @transaction.atomic
@@ -35,13 +136,17 @@ class CampusService:
         country=None,
         description: str = "",
     ) -> Campus:
+        """
+        Create a campus under an existing university.
+
+        New campuses are always created as active. Activation and
+        deactivation are handled by their dedicated operations.
+        """
 
         # --------------------------------------------------
         # 1. Authorization
         # --------------------------------------------------
-        if not AccommodationPolicy.can_create_campus(
-            actor,
-        ):
+        if not AccommodationPolicy.can_create_campus(actor):
             raise PermissionDenied(
                 "Only administrators can create campuses."
             )
@@ -49,35 +154,29 @@ class CampusService:
         # --------------------------------------------------
         # 2. Normalize user-provided values
         # --------------------------------------------------
-        # The service must enforce normalization independently
-        # of the form because it may also be called directly.
-        name = name.strip()
-        code = code.strip().upper()
-
-        postal_code = postal_code.strip()
-        address = address.strip()
-        city = city.strip()
-        province = province.strip()
-        description = description.strip()
+        values = CampusService._normalize_text_fields(
+            name=name,
+            code=code,
+            postal_code=postal_code,
+            address=address,
+            city=city,
+            province=province,
+            description=description,
+        )
 
         # --------------------------------------------------
         # 3. Validate the parent university
         # --------------------------------------------------
         if not university.is_active:
             raise ValidationError(
-                "Cannot create a campus under an "
-                "inactive university."
+                "Cannot create a campus under an inactive university."
             )
 
         # --------------------------------------------------
-        # 4. Validate campus name uniqueness
+        # 4. Check campus name uniqueness
         # --------------------------------------------------
-        # Reject creation when another campus under the same
-        # university already uses this normalized name.
-        if Campus.objects.for_university(
-            university,
-        ).filter(
-            name=name,
+        if Campus.objects.for_university(university).filter(
+            name=values["name"],
         ).exists():
             raise ValidationError(
                 "A campus with this name already exists "
@@ -85,15 +184,10 @@ class CampusService:
             )
 
         # --------------------------------------------------
-        # 5. Validate campus code uniqueness
+        # 5. Check campus code uniqueness
         # --------------------------------------------------
-        # Codes are normalized to uppercase before checking.
-        # This ensures service calls follow the same convention
-        # as CampusForm.clean_code().
-        if Campus.objects.for_university(
-            university,
-        ).filter(
-            code=code,
+        if Campus.objects.for_university(university).filter(
+            code=values["code"],
         ).exists():
             raise ValidationError(
                 "A campus with this code already exists "
@@ -101,48 +195,136 @@ class CampusService:
             )
 
         # --------------------------------------------------
-        # 6. Construct the campus instance
+        # 6. Construct the campus
         # --------------------------------------------------
         campus = Campus(
             university=university,
-            name=name,
-            code=code,
-            postal_code=postal_code,
-            address=address,
-            city=city,
-            province=province,
+            name=values["name"],
+            code=values["code"],
+            postal_code=values["postal_code"],
+            address=values["address"],
+            city=values["city"],
+            province=values["province"],
             country=country,
-            description=description,
+            description=values["description"],
             is_active=True,
         )
 
         # --------------------------------------------------
         # 7. Validate and persist
         # --------------------------------------------------
-        # full_clean() validates model fields and constraints.
-        # The database constraints remain the final protection
-        # against concurrent duplicate creation.
-        try:
-            with transaction.atomic():
-                campus.full_clean()
-                campus.save()
-                
-        except DjangoValidationError as exc:
-            # Convert Django's model validation errors into a domain error.
-            messages = "; ".join(
-                f"{field}: {', '.join(errors)}"
-                for field, errors in exc.message_dict.items()
-            ) if hasattr(exc, "message_dict") else "; ".join(exc.messages)
+        return CampusService._save_campus(campus)
 
-            raise ValidationError(messages) from exc
+    # =========================================================
+    # UPDATE
+    # =========================================================
 
-        except IntegrityError as exc:
-            raise ConflictError(
-                "A campus with the specified name or code already exists "
+    @staticmethod
+    @transaction.atomic
+    def update_campus(
+        *,
+        actor: Any,
+        campus: Campus,
+        name: str,
+        code: str,
+        postal_code: str = "",
+        address: str = "",
+        city: str = "",
+        province: str = "",
+        country=None,
+        description: str = "",
+    ) -> Campus:
+        """
+        Update an existing campus's descriptive and location fields.
+
+        The university relationship is intentionally excluded.
+        Changing a campus's parent university is not an ordinary
+        campus configuration operation.
+        """
+
+        # --------------------------------------------------
+        # 1. Retrieve and lock the current campus
+        # --------------------------------------------------
+        campus = CampusService._get_locked_campus(campus)
+
+        # --------------------------------------------------
+        # 2. Authorization
+        # --------------------------------------------------
+        if not AccommodationPolicy.can_update_campus(
+            actor,
+            campus,
+        ):
+            raise PermissionDenied(
+                "You do not have permission to update this campus."
+            )
+
+        # --------------------------------------------------
+        # 3. Normalize user-provided values
+        # --------------------------------------------------
+        values = CampusService._normalize_text_fields(
+            name=name,
+            code=code,
+            postal_code=postal_code,
+            address=address,
+            city=city,
+            province=province,
+            description=description,
+        )
+
+        # --------------------------------------------------
+        # 4. Check campus name uniqueness
+        # --------------------------------------------------
+        duplicate_name = Campus.objects.for_university(
+            campus.university,
+        ).filter(
+            name=values["name"],
+        ).exclude(
+            pk=campus.pk,
+        ).exists()
+
+        if duplicate_name:
+            raise ValidationError(
+                "A campus with this name already exists "
                 "for this university."
-            ) from exc
+            )
 
-        return campus
+        # --------------------------------------------------
+        # 5. Check campus code uniqueness
+        # --------------------------------------------------
+        duplicate_code = Campus.objects.for_university(
+            campus.university,
+        ).filter(
+            code=values["code"],
+        ).exclude(
+            pk=campus.pk,
+        ).exists()
+
+        if duplicate_code:
+            raise ValidationError(
+                "A campus with this code already exists "
+                "for this university."
+            )
+
+        # --------------------------------------------------
+        # 6. Apply the new values
+        # --------------------------------------------------
+        campus.name = values["name"]
+        campus.code = values["code"]
+        campus.postal_code = values["postal_code"]
+        campus.address = values["address"]
+        campus.city = values["city"]
+        campus.province = values["province"]
+        campus.country = country
+        campus.description = values["description"]
+
+        # --------------------------------------------------
+        # 7. Validate and persist
+        # --------------------------------------------------
+        return CampusService._save_campus(campus)
+
+    # =========================================================
+    # ACTIVATE
+    # =========================================================
 
     @staticmethod
     @transaction.atomic
@@ -151,48 +333,55 @@ class CampusService:
         actor: Any,
         campus: Campus,
     ) -> Campus:
+        """
+        Activate an existing campus.
+
+        A campus cannot be activated while its parent university
+        is inactive.
+        """
 
         # --------------------------------------------------
-        # 1. Authorization
+        # 1. Retrieve and lock the current campus
+        # --------------------------------------------------
+        campus = CampusService._get_locked_campus(campus)
+
+        # --------------------------------------------------
+        # 2. Authorization
         # --------------------------------------------------
         if not AccommodationPolicy.can_activate_campus(
             actor,
             campus,
         ):
             raise PermissionDenied(
-                "You do not have permission to "
-                "activate this campus."
+                "You do not have permission to activate this campus."
             )
 
         # --------------------------------------------------
-        # 2. Validate the parent university
+        # 3. Validate the parent university
         # --------------------------------------------------
         if not campus.university.is_active:
             raise ValidationError(
-                "Cannot activate a campus under an "
-                "inactive university."
+                "Cannot activate a campus under an inactive university."
             )
 
         # --------------------------------------------------
-        # 3. Activate the campus
+        # 4. Check current state
+        # --------------------------------------------------
+        if campus.is_active:
+            raise ValidationError(
+                "This campus is already active."
+            )
+
+        # --------------------------------------------------
+        # 5. Activate and persist
         # --------------------------------------------------
         campus.is_active = True
 
-        # --------------------------------------------------
-        # 4. Validate and persist
-        # --------------------------------------------------
-        try:
-            campus.full_clean()
-            campus.save(
-                update_fields=["is_active"]
-            )
+        return CampusService._save_campus(campus)
 
-        except DjangoValidationError as exc:
-            raise ValidationError(
-                exc.message_dict
-            ) from exc
-
-        return campus
+    # =========================================================
+    # DEACTIVATE
+    # =========================================================
 
     @staticmethod
     @transaction.atomic
@@ -201,24 +390,40 @@ class CampusService:
         actor: Any,
         campus: Campus,
     ) -> Campus:
+        """
+        Deactivate a campus.
+
+        A campus cannot be deactivated while it contains active
+        buildings.
+        """
 
         # --------------------------------------------------
-        # 1. Authorization
+        # 1. Retrieve and lock the current campus
+        # --------------------------------------------------
+        campus = CampusService._get_locked_campus(campus)
+
+        # --------------------------------------------------
+        # 2. Authorization
         # --------------------------------------------------
         if not AccommodationPolicy.can_deactivate_campus(
             actor,
             campus,
         ):
             raise PermissionDenied(
-                "You do not have permission to "
-                "deactivate this campus."
+                "You do not have permission to deactivate this campus."
             )
 
         # --------------------------------------------------
-        # 2. Validate dependent buildings
+        # 3. Check current state
         # --------------------------------------------------
-        # A campus cannot be deactivated while it contains
-        # active buildings.
+        if not campus.is_active:
+            raise ValidationError(
+                "This campus is already inactive."
+            )
+
+        # --------------------------------------------------
+        # 4. Validate dependent buildings
+        # --------------------------------------------------
         if campus.buildings.active().exists():
             raise ValidationError(
                 "Campus cannot be deactivated while it "
@@ -226,22 +431,8 @@ class CampusService:
             )
 
         # --------------------------------------------------
-        # 3. Deactivate the campus
+        # 5. Deactivate and persist
         # --------------------------------------------------
         campus.is_active = False
 
-        # --------------------------------------------------
-        # 4. Validate and persist
-        # --------------------------------------------------
-        try:
-            campus.full_clean()
-            campus.save(
-                update_fields=["is_active"]
-            )
-
-        except DjangoValidationError as exc:
-            raise ValidationError(
-                exc.message_dict
-            ) from exc
-
-        return campus
+        return CampusService._save_campus(campus)

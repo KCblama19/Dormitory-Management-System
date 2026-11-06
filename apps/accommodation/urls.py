@@ -1,18 +1,49 @@
+
 from django.urls import path
 
-from apps.accommodation import views
+from apps.accommodation.views.campus.list_views import CampusListView
+from apps.accommodation.views.campus.detail_views import CampusDetailView
+from apps.accommodation.views.campus.create_views import CampusCreateView
+from apps.accommodation.views.campus.update_views import CampusUpdateView
+from apps.accommodation.views.campus.operational_views import (
+    CampusActivateView,
+    CampusDeactivateView,
+)
+
 
 app_name = "accommodation"
 
+
 urlpatterns = [
-    path("", views.AccommodationDashboardView.as_view(), name="dashboard"),
-    path("buildings/", views.BuildingListView.as_view(), name="buildings"),
-    path("floors/", views.FloorListView.as_view(), name="floors"),
-    path("rooms/", views.RoomListView.as_view(), name="rooms"),
-    path("beds/", views.BedListView.as_view(), name="beds"),
+    # Campus
     path(
-        "bed-configurations/",
-        views.BedConfigurationListView.as_view(),
-        name="bed-configurations",
+        "campuses/",
+        CampusListView.as_view(),
+        name="campus-list",
+    ),
+    path(
+        "campuses/create/",
+        CampusCreateView.as_view(),
+        name="campus-create",
+    ),
+    path(
+        "campuses/<int:pk>/",
+        CampusDetailView.as_view(),
+        name="campus-detail",
+    ),
+    path(
+        "campuses/<int:pk>/update/",
+        CampusUpdateView.as_view(),
+        name="campus-update",
+    ),
+    path(
+        "campuses/<int:pk>/activate/",
+        CampusActivateView.as_view(),
+        name="campus-activate",
+    ),
+    path(
+        "campuses/<int:pk>/deactivate/",
+        CampusDeactivateView.as_view(),
+        name="campus-deactivate",
     ),
 ]
