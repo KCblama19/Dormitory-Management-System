@@ -36,7 +36,11 @@ class CreateBedForm(StyledFormMixin, forms.Form):
     """
 
     room = forms.ModelChoiceField(
-        queryset=Room.objects.all(),
+        queryset=Room.objects.select_related(
+            "floor",
+            "floor__building",
+        ).all(),
+        label="Room",
     )
 
 

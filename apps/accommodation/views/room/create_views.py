@@ -1,8 +1,8 @@
 from django.shortcuts import redirect, render
 
-from apps.accommodation.forms.room.room_forms import CreateRoomForm
+from apps.accommodation.forms.room_forms import CreateRoomForm
 from apps.accommodation.services.room_service import RoomService
-from apps.accommodation.views.building.base import BuildingBaseView
+from apps.accommodation.views.base import BuildingBaseView
 
 from apps.core.exceptions import DomainError
 

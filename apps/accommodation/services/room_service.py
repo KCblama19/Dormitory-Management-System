@@ -1,4 +1,3 @@
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
@@ -7,12 +6,16 @@ from django.db.models import Max
 from apps.accommodation.models import (
     Bed,
     BedConfiguration,
+    Building,
     Floor,
     Room,
 )
 
 # Policies
 from apps.core.policies import AccommodationPolicy
+
+# Database locking utilities
+from apps.core.db.locking import get_locked_instance
 
 # Application exceptions
 from apps.core.exceptions import (
@@ -27,61 +30,91 @@ class RoomService:
     """
     Handles room creation, updates, and bed-configuration inheritance.
 
-    Room positions are allocated within a Floor.
+    Configuration inheritance:
 
-    A Room's effective bed configuration follows this inheritance order:
+        Room override -> Floor override -> Building default
 
-        Room override → Floor override → Building default
+    Locking contract:
 
-    Physical Bed records remain the source of truth for existing capacity.
+        Building -> Floor -> Room -> BedConfiguration -> Bed
+
+    Existing room operations:
+        Building shared -> Floor shared -> Room exclusive
+
+    Room creation:
+        Building shared -> Floor exclusive
+
+    Room creation requires an exclusive Floor lock because room
+    positions are allocated within that Floor.
+
+    Ordinary operations on different Rooms can proceed concurrently
+    because they acquire compatible shared locks on their ancestors
+    and exclusive locks only on their own Room.
     """
 
     # ---------------------------------------------------------
-    # INTERNAL HELPERS
+    # LOCKING HELPERS
     # ---------------------------------------------------------
 
     @staticmethod
-    def _next_room_position(floor):
+    def _get_locked_building(
+        building_id,
+        *,
+        mode="shared",
+    ):
         """
-        Return the first available room position on the Floor.
+        Lock and refresh the Building.
 
-        Positions are reused when gaps exist.
+        Existing room operations use a shared Building lock.
+        Room creation also uses a shared Building lock because
+        its position allocation is scoped to the Floor.
 
-        Example:
-            Existing positions: 1, 2, 4
-            Next available position: 3
-
-        The Floor must already be locked by the calling transaction.
-        """
-
-        occupied_positions = set(
-            floor.rooms.values_list("position", flat=True)
-        )
-
-        for position in range(1, floor.max_rooms_per_floor + 1):
-            if position not in occupied_positions:
-                return position
-
-        raise ConflictError(
-            "This floor has reached its maximum room capacity."
-        )
-
-    @staticmethod
-    def _get_locked_floor(floor_id):
-        """
-        Retrieve and lock the Floor before modifying its Rooms.
-
-        Existing QuerySet methods handle eager loading of the Building
-        and the Floor/Building bed-configuration relationships.
+        Building-level changes acquire an exclusive Building lock
+        through BuildingService.
         """
 
         try:
-            return (
+            return get_locked_instance(
+                Building,
+                building_id,
+                mode=mode,
+            )
+
+        except Building.DoesNotExist as exc:
+            raise NotFoundError(
+                "The requested building could not be found."
+            ) from exc
+
+    @classmethod
+    def _get_locked_floor(
+        cls,
+        floor_id,
+        *,
+        mode="shared",
+    ):
+        """
+        Lock and refresh the Floor using the hierarchy:
+
+            Building shared -> Floor lock
+
+        Existing room operations use a shared Floor lock.
+
+        Room creation uses an exclusive Floor lock to coordinate
+        room-position allocation.
+
+        The Building shared lock prevents BuildingService from
+        changing the parent while this operation is in progress.
+        """
+
+        # Read the parent identifier before acquiring locks.
+        # The Floor's parent relationship is immutable through
+        # the accommodation service operations.
+        try:
+            building_id = (
                 Floor.objects
-                .select_for_update()
-                .with_building()
-                .with_configuration()
+                .only("building_id")
                 .get(pk=floor_id)
+                .building_id
             )
 
         except Floor.DoesNotExist as exc:
@@ -89,35 +122,59 @@ class RoomService:
                 "The requested floor could not be found."
             ) from exc
 
+        cls._get_locked_building(
+            building_id,
+            mode="shared",
+        )
+
+        try:
+            locked_floor = get_locked_instance(
+                Floor,
+                floor_id,
+                mode=mode,
+            )
+
+        except Floor.DoesNotExist as exc:
+            raise NotFoundError(
+                "The requested floor could not be found."
+            ) from exc
+
+        # Refresh related configuration after the Floor lock.
+        # Building and Floor configuration changes must follow
+        # the same ancestor-locking contract.
+        return (
+            Floor.objects
+            .select_related(
+                "building",
+                "building__default_bed_configuration",
+                "bed_configuration_override",
+            )
+            .get(pk=locked_floor.pk)
+        )
+
     @classmethod
     def _get_locked_room(cls, room_id):
         """
-        Lock the parent Floor first, followed by the Room.
+        Lock the ancestors shared and the target Room exclusively.
 
-        This establishes a consistent lock order for room operations.
+        Lock order:
+
+            Building shared
+            Floor shared
+            Room exclusive
+
+        This permits operations on different Rooms under the
+        same Floor to proceed concurrently.
+
+        The returned Floor is refreshed after the locks are held.
         """
 
-        # Find the parent Floor before acquiring the row locks.
         try:
-            floor_id = Room.objects.values_list(
-                "floor_id",
-                flat=True,
-            ).get(pk=room_id)
-
-        except Room.DoesNotExist as exc:
-            raise NotFoundError(
-                "The requested room could not be found."
-            ) from exc
-
-        floor = cls._get_locked_floor(floor_id)
-
-        try:
-            room = (
+            floor_id = (
                 Room.objects
-                .select_for_update()
-                .with_floor()
-                .with_configuration()
+                .only("floor_id")
                 .get(pk=room_id)
+                .floor_id
             )
 
         except Room.DoesNotExist as exc:
@@ -125,21 +182,54 @@ class RoomService:
                 "The requested room could not be found."
             ) from exc
 
-        # The Room's parent Floor should not change during this operation.
-        if room.floor_id != floor.pk:
-            raise ConflictError(
-                "The room's floor changed while the operation was being processed."
+        floor = cls._get_locked_floor(
+            floor_id,
+            mode="shared",
+        )
+
+        try:
+            locked_room = get_locked_instance(
+                Room,
+                room_id,
+                mode="exclusive",
             )
+
+        except Room.DoesNotExist as exc:
+            raise NotFoundError(
+                "The requested room could not be found."
+            ) from exc
+
+        if locked_room.floor_id != floor.pk:
+            raise ConflictError(
+                "The room's floor changed while the operation "
+                "was being processed."
+            )
+
+        # Refresh configuration inheritance after locking the Room.
+        room = (
+            Room.objects
+            .select_related(
+                "floor",
+                "floor__building",
+                "floor__building__default_bed_configuration",
+                "floor__bed_configuration_override",
+                "bed_configuration_override",
+            )
+            .get(pk=locked_room.pk)
+        )
 
         return room, floor
 
     @staticmethod
     def _get_configuration(configuration):
         """
-        Retrieve and lock the latest BedConfiguration record.
+        Retrieve the current BedConfiguration under a shared lock.
 
-        Locking the configuration prevents its active state or bed count
-        from being changed concurrently while this operation validates it.
+        Room operations inspect configuration state but do not
+        change configuration capacity.
+
+        BedConfigurationService will acquire exclusive locks on
+        dependent Buildings before changing configuration capacity.
         """
 
         configuration_id = getattr(
@@ -149,10 +239,10 @@ class RoomService:
         )
 
         try:
-            return (
-                BedConfiguration.objects
-                .select_for_update()
-                .get(pk=configuration_id)
+            return get_locked_instance(
+                BedConfiguration,
+                configuration_id,
+                mode="shared",
             )
 
         except BedConfiguration.DoesNotExist as exc:
@@ -160,23 +250,76 @@ class RoomService:
                 "The selected bed configuration could not be found."
             ) from exc
 
+    # ---------------------------------------------------------
+    # POSITION ALLOCATION
+    # ---------------------------------------------------------
+
     @staticmethod
-    def _validate_configuration_capacity(room, configuration):
+    def _next_room_position(floor):
         """
-        Ensure a configuration accommodates every existing physical bed.
+        Return the first available Room position.
 
-        The highest existing bed position is checked instead of counting
-        Bed records because physical positions may contain gaps.
+        Positions are reused when gaps exist.
 
-        Example:
-            Existing positions: 1, 2, 4
-            Existing bed count:  3
+        The caller must hold an exclusive Floor lock.
+        """
 
-            A configuration with bed_count=3 is invalid because position 4
-            exceeds the permitted configuration capacity.
+        occupied_positions = set(
+            floor.rooms.values_list(
+                "position",
+                flat=True,
+            )
+        )
 
-        Maintenance and out-of-service beds are included because they
-        still physically exist in the room.
+        for position in range(
+            1,
+            floor.max_rooms_per_floor + 1,
+        ):
+            if position not in occupied_positions:
+                return position
+
+        raise ConflictError(
+            "This floor has reached its maximum room capacity."
+        )
+
+    # ---------------------------------------------------------
+    # CONFIGURATION RESOLUTION
+    # ---------------------------------------------------------
+
+    @classmethod
+    def _resolve_inherited_configuration(cls, floor):
+        """
+        Resolve the effective configuration without a Room override.
+
+        Inheritance:
+
+            Floor override -> Building default
+
+        The configuration is retrieved under a shared lock.
+        """
+
+        configuration = (
+            floor.bed_configuration_override
+            or floor.building.default_bed_configuration
+        )
+
+        return cls._get_configuration(configuration)
+
+    @staticmethod
+    def _validate_configuration_capacity(
+        room,
+        configuration,
+    ):
+        """
+        Ensure a configuration accommodates every physical bed.
+
+        The highest existing position is checked instead of the
+        number of Bed records.
+
+        Maintenance and out-of-service beds are included because
+        they remain physically present in the Room.
+
+        The caller must hold an exclusive Room lock.
         """
 
         if configuration is None:
@@ -187,7 +330,8 @@ class RoomService:
                 )
 
             raise ValidationError(
-                "A valid bed configuration must be assigned to the room."
+                "A valid bed configuration must be assigned "
+                "to the room."
             )
 
         if not configuration.is_active:
@@ -198,8 +342,10 @@ class RoomService:
         highest_position = (
             Bed.objects
             .for_room(room)
-            .aggregate(highest_position=Max("position"))
-        )["highest_position"]
+            .aggregate(
+                highest_position=Max("position"),
+            )["highest_position"]
+        )
 
         if (
             highest_position is not None
@@ -210,14 +356,18 @@ class RoomService:
                 "the existing physical bed positions."
             )
 
+    # ---------------------------------------------------------
+    # PERSISTENCE
+    # ---------------------------------------------------------
+
     @staticmethod
     def _save_room(room):
         """
         Validate and persist a Room.
 
-        A nested atomic block creates a savepoint. This allows database
-        integrity failures to be translated into application exceptions
-        without leaving the surrounding transaction unusable.
+        The nested atomic block creates a savepoint. Database
+        integrity errors can therefore be translated without
+        leaving the surrounding service transaction unusable.
         """
 
         try:
@@ -235,6 +385,12 @@ class RoomService:
                 "The room could not be saved because it conflicts "
                 "with an existing accommodation record."
             ) from exc
+
+        return room
+
+    # ---------------------------------------------------------
+    # FLOOR VALIDATION
+    # ---------------------------------------------------------
 
     @staticmethod
     def _validate_floor_for_room_creation(floor):
@@ -256,38 +412,45 @@ class RoomService:
     # ROOM CREATION
     # ---------------------------------------------------------
 
-    @classmethod
+
+    @staticmethod
     @transaction.atomic
     def create_room(
-        cls,
         *,
         actor,
         floor,
         bed_configuration_override=None,
-    ):
+    ) -> Room:
         """
-        Create a Room and allocate its position.
+        Create a room and generate its physical beds.
 
-        The Floor is locked before calculating the next position.
-        This coordinates concurrent room creation operations.
-
-        When no room-level configuration is supplied, the Room inherits
-        the Floor configuration or the Building default.
+        Room creation and bed generation share one transaction. If
+        generation fails, the room creation is rolled back as well.
         """
 
-        locked_floor = cls._get_locked_floor(floor.pk)
+        # Room positions are allocated per floor, so this operation
+        # requires an exclusive floor lock.
+        locked_floor = RoomService._get_locked_floor(
+            floor.pk,
+            mode="exclusive",
+        )
 
         if not AccommodationPolicy.can_create_room(
             actor,
             locked_floor,
         ):
             raise PermissionDenied(
-                "You are not permitted to create rooms on this floor."
+                "You do not have permission to create rooms "
+                "on this floor."
             )
 
-        cls._validate_floor_for_room_creation(locked_floor)
+        RoomService._validate_floor_for_room_creation(
+            locked_floor
+        )
 
-        position = cls._next_room_position(locked_floor)
+        position = RoomService._next_room_position(
+            locked_floor
+        )
 
         room = Room(
             floor=locked_floor,
@@ -295,26 +458,40 @@ class RoomService:
         )
 
         if bed_configuration_override is not None:
-            configuration = cls._get_configuration(
+            configuration = RoomService._get_configuration(
                 bed_configuration_override
             )
-
             room.bed_configuration_override = configuration
-
         else:
-            # Resolve the Floor override or Building default.
-            configuration = cls._get_configuration(
-                room.effective_bed_configuration
+            # Resolve the inherited configuration explicitly.
+            configuration = (
+                RoomService._resolve_inherited_configuration(
+                    locked_floor
+                )
             )
 
-        cls._validate_configuration_capacity(
+        RoomService._validate_configuration_capacity(
             room,
             configuration,
         )
 
-        cls._save_room(room)
+        room = RoomService._save_room(room)
+
+        # Import locally to avoid a circular dependency between the
+        # RoomService and BedService modules.
+        from apps.accommodation.services.bed_service import (
+            BedService,
+        )
+
+        # This runs inside the same outer transaction. A permission,
+        # validation, or persistence failure rolls back the room too.
+        BedService.generate_beds(
+            actor=actor,
+            room=room,
+        )
 
         return room
+
 
     # ---------------------------------------------------------
     # ROOM UPDATE
@@ -332,13 +509,19 @@ class RoomService:
         """
         Update the Room's editable configuration.
 
-        None means no configuration change. Use the dedicated
-        remove_bed_configuration_override() method to remove an override.
+        None means no configuration change.
 
-        This method retains the existing room-update authorization rule.
+        Removing an override remains a dedicated operation.
+
+        Lock order:
+
+            Building shared -> Floor shared -> Room exclusive
+            -> Configuration shared
         """
 
-        locked_room, _ = cls._get_locked_room(room.pk)
+        locked_room, _ = cls._get_locked_room(
+            room.pk
+        )
 
         if not AccommodationPolicy.can_update_room(
             actor,
@@ -378,13 +561,15 @@ class RoomService:
         configuration,
     ):
         """
-        Assign a room-level bed configuration override.
+        Assign a Room-level bed configuration override.
 
-        The selected configuration must be active and must accommodate
-        all existing physical bed positions.
+        The Room is exclusively locked before validating existing
+        physical beds or changing the override.
         """
 
-        locked_room, _ = cls._get_locked_room(room.pk)
+        locked_room, _ = cls._get_locked_room(
+            room.pk
+        )
 
         if not AccommodationPolicy.can_manage_room_operations(
             actor,
@@ -394,18 +579,20 @@ class RoomService:
                 "You are not permitted to manage this room's operations."
             )
 
-        selected_configuration = cls._get_configuration(configuration)
+        selected_configuration = cls._get_configuration(
+            configuration
+        )
 
         cls._validate_configuration_capacity(
             locked_room,
             selected_configuration,
         )
 
-        locked_room.bed_configuration_override = selected_configuration
+        locked_room.bed_configuration_override = (
+            selected_configuration
+        )
 
-        cls._save_room(locked_room)
-
-        return locked_room
+        return cls._save_room(locked_room)
 
     @classmethod
     @transaction.atomic
@@ -416,19 +603,19 @@ class RoomService:
         room,
     ):
         """
-        Remove the room-level override and restore inherited configuration.
+        Remove the Room override and restore inherited configuration.
 
-        The inherited configuration is resolved using:
+        Inheritance:
 
-            Floor override, if present
-                ↓
-            Building default
+            Floor override -> Building default
 
-        The inherited configuration must accommodate the existing
-        physical bed positions before the override can be removed.
+        The inherited configuration must accommodate every existing
+        physical bed position before the override can be removed.
         """
 
-        locked_room, _ = cls._get_locked_room(room.pk)
+        locked_room, _ = cls._get_locked_room(
+            room.pk
+        )
 
         if not AccommodationPolicy.can_manage_room_operations(
             actor,
@@ -438,8 +625,10 @@ class RoomService:
                 "You are not permitted to manage this room's operations."
             )
 
-        inherited_configuration = cls._get_configuration(
-            locked_room.floor.effective_bed_configuration
+        inherited_configuration = (
+            cls._resolve_inherited_configuration(
+                locked_room.floor
+            )
         )
 
         cls._validate_configuration_capacity(
@@ -449,6 +638,4 @@ class RoomService:
 
         locked_room.bed_configuration_override = None
 
-        cls._save_room(locked_room)
-
-        return locked_room
+        return cls._save_room(locked_room)

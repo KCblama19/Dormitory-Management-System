@@ -1,4 +1,3 @@
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
@@ -15,6 +14,9 @@ from apps.accommodation.models import (
 # Policies
 from apps.core.policies import AccommodationPolicy
 
+# Database locking utilities
+from apps.core.db.locking import get_locked_instance
+
 # Application exceptions
 from apps.core.exceptions import (
     ValidationError,
@@ -29,59 +31,53 @@ class FloorService:
     Handles floor creation, updates, status transitions, restrictions,
     and bed-configuration overrides.
 
-    Floor-level bed configuration inheritance:
+    Locking contract:
 
-        Floor override → Building default
+        Building -> Floor -> Room -> BedConfiguration -> Bed
 
-    Rooms with their own configuration overrides are excluded when
-    validating a Floor configuration change.
+    Existing-floor operations:
+        Shared Building -> Exclusive Floor
+
+    Floor creation:
+        Exclusive Building -> Shared BedConfiguration
+
+    The exclusive Floor lock coordinates with child operations that
+    acquire shared Floor locks before modifying Rooms or Beds.
+
+    PostgreSQL is required for the row-level locking guarantees.
     """
 
+    GENDER_MAPPING = {
+        Building.GenderPolicy.MALE_ONLY:
+            Floor.GenderConfiguration.MALE,
+
+        Building.GenderPolicy.FEMALE_ONLY:
+            Floor.GenderConfiguration.FEMALE,
+    }
+
     # ---------------------------------------------------------
-    # INTERNAL HELPERS
+    # LOCKING HELPERS
     # ---------------------------------------------------------
 
     @staticmethod
-    def _next_floor_number(building):
+    def _get_locked_building(
+        building,
+        *,
+        mode="shared",
+    ):
         """
-        Return the lowest available floor number.
+        Lock and refresh a Building.
 
-        Existing floor numbers are reserved even when their floors
-        are inactive or under maintenance.
-
-        The Building must already be locked by the calling transaction.
-        """
-
-        existing_numbers = set(
-            building.floors.values_list(
-                "floor_number",
-                flat=True,
-            )
-        )
-
-        for floor_number in range(1, building.max_floors + 1):
-            if floor_number not in existing_numbers:
-                return floor_number
-
-        raise ConflictError(
-            "The building has reached its maximum number of floors."
-        )
-
-    @staticmethod
-    def _get_locked_building(building):
-        """
-        Retrieve and lock the latest Building record.
-
-        The Building lock coordinates floor-number allocation and
-        protects operations that depend on its current state.
+        Existing-floor operations use a shared Building lock.
+        Floor creation uses an exclusive Building lock because
+        floor-number allocation is Building-wide.
         """
 
         try:
-            return (
-                Building.objects
-                .select_for_update()
-                .with_configuration()
-                .get(pk=building.pk)
+            return get_locked_instance(
+                Building,
+                building.pk,
+                mode=mode,
             )
 
         except Building.DoesNotExist as exc:
@@ -89,22 +85,26 @@ class FloorService:
                 "The requested building could not be found."
             ) from exc
 
-    @staticmethod
-    def _get_locked_floor(floor):
+    @classmethod
+    def _get_locked_floor(cls, floor):
         """
-        Retrieve and lock the latest Floor record.
+        Acquire locks in the required hierarchy:
 
-        Related Building and configuration records are loaded using
-        the existing FloorQuerySet methods.
+            Building shared -> Floor exclusive
+
+        The Building identifier is read first to determine which
+        ancestor must be locked. The Floor is then refreshed after
+        acquiring its exclusive lock.
+
+        All operations that modify a Floor must use this helper.
         """
 
         try:
-            return (
+            building_id = (
                 Floor.objects
-                .select_for_update()
-                .with_building()
-                .with_configuration()
+                .only("building_id")
                 .get(pk=floor.pk)
+                .building_id
             )
 
         except Floor.DoesNotExist as exc:
@@ -112,13 +112,47 @@ class FloorService:
                 "The requested floor could not be found."
             ) from exc
 
+        # Compatible with other operations under the same Building,
+        # but prevents a Building-level mutation from proceeding.
+        cls._get_locked_building(
+            Building(pk=building_id),
+            mode="shared",
+        )
+
+        try:
+            locked_floor = get_locked_instance(
+                Floor,
+                floor.pk,
+                mode="exclusive",
+            )
+
+        except Floor.DoesNotExist as exc:
+            raise NotFoundError(
+                "The requested floor could not be found."
+            ) from exc
+
+        # Load related state only after the Floor has been locked.
+        # The Building row is already protected by our shared lock.
+        locked_floor = (
+            Floor.objects
+            .select_related(
+                "building",
+                "building__default_bed_configuration",
+                "bed_configuration_override",
+            )
+            .get(pk=locked_floor.pk)
+        )
+
+        return locked_floor
+
     @staticmethod
     def _get_configuration(configuration):
         """
-        Retrieve and lock the latest BedConfiguration record.
+        Retrieve the current configuration under a shared lock.
 
-        This avoids relying on potentially stale configuration instances
-        supplied by callers.
+        Floor operations only need to inspect or assign configuration
+        state. Capacity changes are coordinated by BedConfigurationService,
+        which will acquire exclusive locks on dependent Buildings.
         """
 
         configuration_id = getattr(
@@ -128,10 +162,10 @@ class FloorService:
         )
 
         try:
-            return (
-                BedConfiguration.objects
-                .select_for_update()
-                .get(pk=configuration_id)
+            return get_locked_instance(
+                BedConfiguration,
+                configuration_id,
+                mode="shared",
             )
 
         except BedConfiguration.DoesNotExist as exc:
@@ -139,13 +173,17 @@ class FloorService:
                 "The selected bed configuration could not be found."
             ) from exc
 
+    # ---------------------------------------------------------
+    # PERSISTENCE
+    # ---------------------------------------------------------
+
     @staticmethod
     def _save_floor(floor):
         """
         Validate and persist a Floor.
 
-        A nested atomic block creates a savepoint. This allows database
-        integrity errors to be translated safely without leaving the
+        The nested atomic block creates a savepoint, allowing
+        integrity errors to be translated without leaving the
         surrounding service transaction unusable.
         """
 
@@ -167,13 +205,48 @@ class FloorService:
 
         return floor
 
-    @staticmethod
-    def _validate_gender_configuration(building, gender_configuration):
-        """
-        Validate floor-level gender configuration against the
-        Building's gender policy.
+    # ---------------------------------------------------------
+    # VALIDATION HELPERS
+    # ---------------------------------------------------------
 
-        Floor-level gender configuration is only permitted inside
+    @staticmethod
+    def _next_floor_number(building):
+        """
+        Return the lowest available floor number.
+
+        Existing floor numbers remain reserved, including floors
+        that are inactive or under maintenance.
+
+        The caller must hold an exclusive Building lock.
+        """
+
+        existing_numbers = set(
+            building.floors.values_list(
+                "floor_number",
+                flat=True,
+            )
+        )
+
+        for floor_number in range(
+            1,
+            building.max_floors + 1,
+        ):
+            if floor_number not in existing_numbers:
+                return floor_number
+
+        raise ConflictError(
+            "The building has reached its maximum number of floors."
+        )
+
+    @staticmethod
+    def _validate_gender_configuration(
+        building,
+        gender_configuration,
+    ):
+        """
+        Validate the floor gender configuration against its Building.
+
+        Floor-level gender configuration is only allowed inside
         mixed-gender buildings.
         """
 
@@ -203,41 +276,48 @@ class FloorService:
             )
 
     @classmethod
-    def _validate_inherited_room_capacity(cls, floor, configuration):
+    def _validate_inherited_room_capacity(
+        cls,
+        floor,
+        configuration,
+    ):
         """
-        Ensure a Floor configuration can accommodate the physical beds
-        in every Room that inherits the Floor's configuration.
+        Validate the selected configuration against physical beds
+        in Rooms inheriting the Floor configuration.
 
-        Rooms with their own room-level override are deliberately excluded.
+        The caller must hold:
 
-        The Floor is expected to be locked before this method is called.
-        Room rows are locked before checking their Bed records. This
-        coordinates with BedService operations that lock Floor → Room
-        before creating or changing physical beds.
+            Shared Building -> Exclusive Floor
 
-        The highest physical Bed position is checked, not the number
-        of Bed records. Maintenance and out-of-service beds are included.
+        Room and Bed operations must acquire a shared Floor lock
+        before modifying those resources. Consequently, they cannot
+        modify descendants while this Floor is exclusively locked.
+
+        Rooms with their own configuration overrides are excluded.
+        Physical beds are checked regardless of operational status.
         """
 
         cls._validate_active_configuration(configuration)
 
-        # Lock only rooms that inherit the Floor configuration.
-        inheriting_rooms = list(
-            Room.objects
-            .select_for_update()
-            .filter(
-                floor=floor,
+        # The exclusive Floor lock coordinates with RoomService
+        # and BedService operations that require a shared Floor lock.
+        #
+        # Therefore, room creation, room configuration changes,
+        # and physical bed changes beneath this Floor cannot proceed
+        # concurrently with this validation.
+        room_ids = list(
+            Room.objects.filter(
+                floor_id=floor.pk,
                 bed_configuration_override__isnull=True,
+            ).values_list(
+                "pk",
+                flat=True,
             )
-            .only("pk")
         )
 
-        if not inheriting_rooms:
+        if not room_ids:
             return
 
-        room_ids = [room.pk for room in inheriting_rooms]
-
-        # Aggregate physical bed positions for all affected rooms.
         highest_positions = {
             item["room_id"]: item["highest_position"]
             for item in (
@@ -250,17 +330,12 @@ class FloorService:
             )
         }
 
-        for room in inheriting_rooms:
-            highest_position = highest_positions.get(room.pk)
-
-            if (
-                highest_position is not None
-                and highest_position > configuration.bed_count
-            ):
+        for room_id, highest_position in highest_positions.items():
+            if highest_position > configuration.bed_count:
                 raise ConflictError(
-                    f"Room ID {room.pk} contains a physical bed at "
-                    f"position {highest_position}, which exceeds the "
-                    f"selected configuration capacity of "
+                    f"Room ID {room_id} contains a physical bed "
+                    f"at position {highest_position}, which exceeds "
+                    f"the selected configuration capacity of "
                     f"{configuration.bed_count}."
                 )
 
@@ -278,22 +353,27 @@ class FloorService:
         max_rooms_per_floor,
         gender_configuration=None,
         bed_configuration_override=None,
-        restriction_note=None,
-        is_restricted=False,
     ):
         """
         Create a Floor inside a Building.
 
-        The Building is locked before calculating the next floor number.
-        This prevents concurrent requests from selecting the same number.
+        Floor creation takes an exclusive Building lock because
+        floor-number allocation is Building-wide.
 
-        The effective configuration must also be active, whether it comes
-        from a Floor override or the Building default.
+        Restriction fields are intentionally excluded. Restrictions
+        must be applied through set_restriction(), which performs
+        the dedicated restriction authorization check.
         """
 
-        building = cls._get_locked_building(building)
+        building = cls._get_locked_building(
+            building,
+            mode="exclusive",
+        )
 
-        if not AccommodationPolicy.can_create_floor(actor, building):
+        if not AccommodationPolicy.can_create_floor(
+            actor,
+            building,
+        ):
             raise PermissionDenied(
                 "You do not have permission to create floors "
                 "in this building."
@@ -332,8 +412,6 @@ class FloorService:
                 if bed_configuration_override is not None
                 else None
             ),
-            restriction_note=restriction_note,
-            is_restricted=is_restricted,
         )
 
         return cls._save_floor(floor)
@@ -354,13 +432,19 @@ class FloorService:
         """
         Update permitted Floor fields.
 
-        Fields affecting relationships or system-managed properties
-        must be changed through dedicated service methods.
+        Restriction fields are deliberately excluded. They must be
+        changed through the dedicated restriction operations.
+
+        The exclusive Floor lock coordinates with child operations
+        that acquire shared Floor locks before modifying Rooms or Beds.
         """
 
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_update_floor(actor, floor):
+        if not AccommodationPolicy.can_update_floor(
+            actor,
+            floor,
+        ):
             raise PermissionDenied(
                 "You do not have permission to update floors "
                 "in this building."
@@ -369,19 +453,17 @@ class FloorService:
         allowed_fields = {
             "max_rooms_per_floor",
             "gender_configuration",
-            "restriction_note",
-            "is_restricted",
         }
 
-        # Reject fields that are not explicitly editable.
-        for field in changes:
-            if field not in allowed_fields:
-                raise ValidationError(
-                    f"'{field}' cannot be edited."
-                )
+        unknown_fields = set(changes) - allowed_fields
 
-        # Check the highest occupied room position rather than the
-        # number of rooms. Room positions can contain gaps.
+        if unknown_fields:
+            field = sorted(unknown_fields)[0]
+
+            raise ValidationError(
+                f"'{field}' cannot be edited."
+            )
+
         if "max_rooms_per_floor" in changes:
             new_limit = changes["max_rooms_per_floor"]
 
@@ -415,7 +497,7 @@ class FloorService:
         return cls._save_floor(floor)
 
     # ---------------------------------------------------------
-    # ACTIVATE FLOOR
+    # FLOOR STATUS TRANSITIONS
     # ---------------------------------------------------------
 
     @classmethod
@@ -424,12 +506,19 @@ class FloorService:
         """
         Activate a Floor.
 
-        A Floor cannot be activated while its parent Building is inactive.
+        The parent Building must be active.
+
+        This method currently permits activation from Maintenance.
+        If the intended workflow requires a separate maintenance
+        release operation, that will need to be defined explicitly.
         """
 
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_activate_floor(actor, floor):
+        if not AccommodationPolicy.can_activate_floor(
+            actor,
+            floor,
+        ):
             raise PermissionDenied(
                 "You do not have permission to activate this floor."
             )
@@ -443,23 +532,22 @@ class FloorService:
 
         return cls._save_floor(floor)
 
-    # ---------------------------------------------------------
-    # DEACTIVATE FLOOR
-    # ---------------------------------------------------------
-
     @classmethod
     @transaction.atomic
     def deactivate_floor(cls, actor, floor):
         """
         Deactivate a Floor.
 
-        Occupancy validation is intentionally deferred until the
-        Assignment model is implemented.
+        Occupancy validation remains deferred until AssignmentService
+        is implemented.
         """
 
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_deactivate_floor(actor, floor):
+        if not AccommodationPolicy.can_deactivate_floor(
+            actor,
+            floor,
+        ):
             raise PermissionDenied(
                 "You do not have permission to deactivate this floor."
             )
@@ -468,18 +556,14 @@ class FloorService:
 
         return cls._save_floor(floor)
 
-    # ---------------------------------------------------------
-    # SET FLOOR MAINTENANCE
-    # ---------------------------------------------------------
-
     @classmethod
     @transaction.atomic
     def set_maintenance(cls, actor, floor):
         """
-        Set a Floor's operational status to maintenance.
+        Set the Floor operational status to Maintenance.
 
-        Occupancy-dependent restrictions will be added when the
-        Assignment model is available.
+        Occupancy-dependent restrictions remain deferred until
+        AssignmentService is implemented.
         """
 
         floor = cls._get_locked_floor(floor)
@@ -498,7 +582,7 @@ class FloorService:
         return cls._save_floor(floor)
 
     # ---------------------------------------------------------
-    # SET FLOOR RESTRICTION
+    # FLOOR RESTRICTIONS
     # ---------------------------------------------------------
 
     @classmethod
@@ -510,7 +594,11 @@ class FloorService:
         note=None,
     ):
         """
-        Restrict a Floor and record the reason for the restriction.
+        Restrict a Floor and record the reason.
+
+        Restriction changes use an exclusive Floor lock so that
+        room and bed operations following the shared-Floor protocol
+        coordinate with the restriction change.
         """
 
         floor = cls._get_locked_floor(floor)
@@ -532,10 +620,6 @@ class FloorService:
         floor.restriction_note = note.strip()
 
         return cls._save_floor(floor)
-
-    # ---------------------------------------------------------
-    # REMOVE FLOOR RESTRICTION
-    # ---------------------------------------------------------
 
     @classmethod
     @transaction.atomic
@@ -561,7 +645,7 @@ class FloorService:
         return cls._save_floor(floor)
 
     # ---------------------------------------------------------
-    # SET BED CONFIGURATION OVERRIDE
+    # FLOOR BED CONFIGURATION
     # ---------------------------------------------------------
 
     @classmethod
@@ -575,8 +659,10 @@ class FloorService:
         """
         Assign a Floor-level bed configuration override.
 
-        Before applying the override, validate every Room that inherits
-        the Floor configuration. Room-level overrides remain unaffected.
+        The Floor is exclusively locked before validating its
+        inheriting Rooms. Child operations must acquire shared
+        Floor locks, preventing concurrent bed changes beneath
+        this Floor while capacity is being checked.
         """
 
         floor = cls._get_locked_floor(floor)
@@ -590,7 +676,9 @@ class FloorService:
                 "bed configuration."
             )
 
-        selected_configuration = cls._get_configuration(configuration)
+        selected_configuration = cls._get_configuration(
+            configuration
+        )
 
         cls._validate_inherited_room_capacity(
             floor,
@@ -601,20 +689,21 @@ class FloorService:
 
         return cls._save_floor(floor)
 
-    # ---------------------------------------------------------
-    # REMOVE BED CONFIGURATION OVERRIDE
-    # ---------------------------------------------------------
-
     @classmethod
     @transaction.atomic
-    def remove_bed_configuration_override(cls, actor, floor):
+    def remove_bed_configuration_override(
+        cls,
+        actor,
+        floor,
+    ):
         """
-        Remove the Floor-level override and restore the Building default.
+        Remove the Floor override and restore the Building default.
 
-        The Building default must be active and capable of accommodating
-        every physical bed in Rooms that inherit the Floor configuration.
+        The Building default must be active and capable of
+        accommodating every physical bed in Rooms inheriting
+        the Floor configuration.
 
-        Rooms with their own overrides are not affected.
+        Rooms with their own configuration overrides are excluded.
         """
 
         floor = cls._get_locked_floor(floor)

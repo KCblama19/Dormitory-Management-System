@@ -42,6 +42,21 @@ from apps.accommodation.views.room.operational_views import (
     RoomRemoveBedConfigurationView,
 )
 
+#-----------------------
+# ROOM IMPORTS
+#-----------------------
+from apps.accommodation.views.bed.list_views import BedListView
+from apps.accommodation.views.bed.detail_views import BedDetailView
+from apps.accommodation.views.bed.create_views import BedCreateView
+from apps.accommodation.views.bed.update_views import BedPositionUpdateView
+
+from apps.accommodation.views.bed.operational_views import (
+    BedSetAvailableView,
+    BedSetMaintenanceView,
+    BedSetOutOfServiceView,
+    BedRestoreView,
+)
+
 app_name = "accommodation"
 
 
@@ -161,5 +176,38 @@ urlpatterns = [
         "rooms/<int:pk>/remove-bed-configuration/",
         RoomRemoveBedConfigurationView.as_view(),
         name="room-remove-bed-configuration",
+    ),
+    
+    # BED ROUTES
+
+    path("beds/", BedListView.as_view(), name="bed-list"),
+    path("beds/create/", BedCreateView.as_view(), name="bed-create"),
+    path("beds/<int:pk>/", BedDetailView.as_view(), name="bed-detail"),
+    path(
+        "beds/<int:pk>/update-position/",
+        BedPositionUpdateView.as_view(),
+        name="bed-update-position",
+    ),
+
+    # Bed status operations
+    path(
+        "beds/<int:pk>/available/",
+        BedSetAvailableView.as_view(),
+        name="bed-set-available",
+    ),
+    path(
+        "beds/<int:pk>/maintenance/",
+        BedSetMaintenanceView.as_view(),
+        name="bed-set-maintenance",
+    ),
+    path(
+        "beds/<int:pk>/out-of-service/",
+        BedSetOutOfServiceView.as_view(),
+        name="bed-set-out-of-service",
+    ),
+    path(
+        "beds/<int:pk>/restore/",
+        BedRestoreView.as_view(),
+        name="bed-restore",
     ),
 ]

@@ -1,16 +1,18 @@
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
+from apps.core.db.locking import get_locked_instance
+
 
 # MODELS
+from apps.accommodation.models.campus.campus_model import Campus
+from apps.accommodation.models.building.building_model import Building
+from apps.accommodation.models.floor.floor_model import Floor
 from apps.accommodation.models import (
     Bed,
     BedConfiguration,
     Room,
 )
-from apps.accommodation.models.building.building_model import Building
-from apps.accommodation.models.floor.floor_model import Floor
 
 # POLICIES
 from apps.core.policies import AccommodationPolicy
@@ -46,39 +48,65 @@ class BuildingService:
     # ------------------------------------------------------------------
     # LOCKING AND PERSISTENCE
     # ------------------------------------------------------------------
+    
+    @staticmethod
+    def _get_locked_campus(campus: Campus) -> Campus:
+        """
+        Lock and refresh a campus before creating a building under it.
 
+        Campus deactivation must use an exclusive Campus lock.
+        Building creation uses a shared Campus lock so multiple
+        buildings can be created concurrently on the same campus.
+        """
+        try:
+            return get_locked_instance(
+                Campus,
+                campus.pk,
+                mode="shared",
+            )
+        except Campus.DoesNotExist as exc:
+            raise NotFoundError(
+                "The requested campus could not be found."
+            ) from exc
+            
+            
     @staticmethod
     def _get_locked_building(building: Building) -> Building:
         """
-        Retrieve the latest building record while acquiring a row lock.
+        Lock and refresh a building before performing a mutation.
 
-        Locking the building serializes changes to its configuration
-        and operational state on databases that support row-level locks.
+        Building mutations require an exclusive lock because they can
+        affect the operational state or configuration inherited by
+        descendant floors, rooms, and beds.
         """
-
         try:
-            return Building.objects.select_for_update().get(
-                pk=building.pk
+            return get_locked_instance(
+                Building,
+                building.pk,
+                mode="exclusive",
             )
         except Building.DoesNotExist as exc:
             raise NotFoundError(
                 "The requested building could not be found."
             ) from exc
 
+    
     @staticmethod
     def _get_locked_configuration(
         configuration: BedConfiguration,
     ) -> BedConfiguration:
         """
-        Retrieve the latest bed configuration under a row lock.
+        Acquire a shared lock on a configuration.
 
-        This prevents a configuration from being deactivated or otherwise
-        changed concurrently while it is being assigned as a default.
+        Building operations that assign a configuration only need to
+        read its current state. Configuration capacity changes will
+        acquire exclusive locks through BedConfigurationService.
         """
-
         try:
-            return BedConfiguration.objects.select_for_update().get(
-                pk=configuration.pk
+            return get_locked_instance(
+                BedConfiguration,
+                configuration.pk,
+                mode="shared",
             )
         except BedConfiguration.DoesNotExist as exc:
             raise NotFoundError(
@@ -153,45 +181,29 @@ class BuildingService:
                 "configuration conflicts with the proposed policy."
             )
 
+    
     @staticmethod
     def _validate_default_configuration(
         building: Building,
         configuration: BedConfiguration,
     ) -> BedConfiguration:
         """
-        Validate a proposed building default against rooms inheriting it.
+        Validate a proposed building default configuration.
 
-        Rooms with their own bed configuration override are deliberately
-        excluded: changing the building default does not affect them.
+        The caller must hold an exclusive lock on the building.
 
-        The highest physical bed position is checked instead of counting
-        beds. This catches gaps in bed numbering and includes beds in
-        maintenance or out-of-service states.
+        Descendant operations coordinate through shared locks on their
+        ancestor building. Therefore, while this building is exclusively
+        locked, compliant child operations cannot modify its floors,
+        rooms, or beds.
+
+        Rooms with their own configuration override are excluded because
+        they do not inherit the proposed building default.
         """
 
-        # Lock floors first, following the accommodation hierarchy.
-        floors = list(
-            Floor.objects.select_for_update()
-            .filter(building=building)
-            .order_by("pk")
-            .values_list("pk", flat=True)
-        )
-
-        # Only rooms inheriting the building default are affected.
-        # Locking these rows coordinates with services that create beds
-        # or change room-level configuration.
-        room_ids = list(
-            Room.objects.select_for_update()
-            .filter(
-                floor_id__in=floors,
-                bed_configuration_override__isnull=True,
-            )
-            .order_by("pk")
-            .values_list("pk", flat=True)
-        )
-
-        # Lock and refresh the selected configuration after locking
-        # the dependent rooms.
+        # The configuration is only being inspected here. Its shared
+        # lock prevents concurrent configuration updates from changing
+        # its active state or capacity during validation.
         configuration = BuildingService._get_locked_configuration(
             configuration
         )
@@ -202,15 +214,33 @@ class BuildingService:
                 "the building default."
             )
 
+        # Only rooms inheriting the building default are affected.
+        # A room-level override takes precedence over this building
+        # configuration and therefore remains unaffected.
+        room_ids = list(
+            Room.objects.filter(
+                floor__building=building,
+                floor__bed_configuration_override__isnull=True,
+                bed_configuration_override__isnull=True,
+            ).values_list(
+                "pk",
+                flat=True,
+            )
+        )
+
         if not room_ids:
             return configuration
 
-        # Every physical bed matters, regardless of its operational status.
+        # Physical beds matter regardless of their operational status.
+        # Checking the highest position catches gaps in numbering and
+        # beds that are under maintenance or out of service.
         highest_positions = (
             Bed.objects
             .filter(room_id__in=room_ids)
             .values("room_id")
-            .annotate(highest_position=Max("position"))
+            .annotate(
+                highest_position=Max("position"),
+            )
         )
 
         incompatible_rooms = [
@@ -228,6 +258,7 @@ class BuildingService:
             )
 
         return configuration
+
 
     @staticmethod
     def _validate_max_floors(
@@ -364,7 +395,8 @@ class BuildingService:
             raise PermissionDenied(
                 "Only administrators can create buildings."
             )
-
+        campus = BuildingService._get_locked_campus(campus)
+        
         if not campus.is_active:
             raise ValidationError(
                 "Cannot create a building on an inactive campus."
