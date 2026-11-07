@@ -17,7 +17,6 @@ class BedConfigurationForm(
             "name",
             "bed_count",
             "description",
-            "is_active",
         )
         widgets = {
             "description": forms.Textarea(

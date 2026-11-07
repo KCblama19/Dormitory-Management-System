@@ -72,3 +72,7 @@ class AccommodationBaseView(LoginRequiredMixin, View):
 class BuildingBaseView(AccommodationBaseView):
     def get_fallback_url(self):
         return "accommodation:building-list"
+    
+class BedConfigurationBaseView(AccommodationBaseView):
+    def get_fallback_url(self):
+        return "accommodation:bed-configuration-list"

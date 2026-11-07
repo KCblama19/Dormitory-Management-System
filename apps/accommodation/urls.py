@@ -1,8 +1,8 @@
 from django.urls import path
 
-#-----------------------
+# -----------------------
 # CAMPUS IMPORTS
-#-----------------------
+# -----------------------
 from apps.accommodation.views.campus.list_views import CampusListView
 from apps.accommodation.views.campus.detail_views import CampusDetailView
 from apps.accommodation.views.campus.create_views import CampusCreateView
@@ -12,14 +12,30 @@ from apps.accommodation.views.campus.operational_views import (
     CampusDeactivateView,
 )
 
-#-----------------------
+# -----------------------
+# BUILDING IMPORTS
+# -----------------------
+from apps.accommodation.views.building.list_views import BuildingListView
+from apps.accommodation.views.building.detail_views import BuildingDetailView
+from apps.accommodation.views.building.create_views import BuildingCreateView
+from apps.accommodation.views.building.update_views import BuildingUpdateView
+from apps.accommodation.views.building.operational_views import (
+    BuildingActivateView,
+    BuildingDeactivateView,
+)
+from apps.accommodation.views.building.configuration_views import (
+    BuildingGenderPolicyChangeView,
+    BuildingPopulationChangeView,
+    BuildingDefaultBedConfigurationChangeView,
+)
+
+# -----------------------
 # FLOOR IMPORTS
-#-----------------------
+# -----------------------
 from apps.accommodation.views.floor.list_views import FloorListView
 from apps.accommodation.views.floor.detail_views import FloorDetailView
 from apps.accommodation.views.floor.create_views import FloorCreateView
 from apps.accommodation.views.floor.update_views import FloorUpdateView
-
 from apps.accommodation.views.floor.operational_views import (
     FloorActivateView,
     FloorDeactivateView,
@@ -30,26 +46,24 @@ from apps.accommodation.views.floor.operational_views import (
     FloorRemoveBedConfigurationView,
 )
 
-#-----------------------
+# -----------------------
 # ROOM IMPORTS
-#-----------------------
+# -----------------------
 from apps.accommodation.views.room.list_views import RoomListView
 from apps.accommodation.views.room.detail_views import RoomDetailView
 from apps.accommodation.views.room.create_views import RoomCreateView
-
 from apps.accommodation.views.room.operational_views import (
     RoomSetBedConfigurationView,
     RoomRemoveBedConfigurationView,
 )
 
-#-----------------------
-# ROOM IMPORTS
-#-----------------------
+# -----------------------
+# BED IMPORTS
+# -----------------------
 from apps.accommodation.views.bed.list_views import BedListView
 from apps.accommodation.views.bed.detail_views import BedDetailView
 from apps.accommodation.views.bed.create_views import BedCreateView
 from apps.accommodation.views.bed.update_views import BedPositionUpdateView
-
 from apps.accommodation.views.bed.operational_views import (
     BedSetAvailableView,
     BedSetMaintenanceView,
@@ -57,11 +71,32 @@ from apps.accommodation.views.bed.operational_views import (
     BedRestoreView,
 )
 
+# -----------------------
+# BED CONFIGURATION IMPORTS
+# -----------------------
+from apps.accommodation.views.bed_configuration.list_views import (
+    BedConfigurationListView,
+)
+from apps.accommodation.views.bed_configuration.detail_views import (
+    BedConfigurationDetailView,
+)
+from apps.accommodation.views.bed_configuration.create_views import (
+    BedConfigurationCreateView,
+)
+from apps.accommodation.views.bed_configuration.update_views import (
+    BedConfigurationUpdateView,
+    BedConfigurationActivateView,
+    BedConfigurationDeactivateView,
+)
+
+
 app_name = "accommodation"
 
 
 urlpatterns = [
-    # Campus
+    # -----------------------
+    # CAMPUS ROUTES
+    # -----------------------
     path(
         "campuses/",
         CampusListView.as_view(),
@@ -92,8 +127,10 @@ urlpatterns = [
         CampusDeactivateView.as_view(),
         name="campus-deactivate",
     ),
-    
-    # Building routes
+
+    # -----------------------
+    # BUILDING ROUTES
+    # -----------------------
     path(
         "buildings/",
         BuildingListView.as_view(),
@@ -139,32 +176,90 @@ urlpatterns = [
         BuildingDefaultBedConfigurationChangeView.as_view(),
         name="building-change-default-bed-configuration",
     ),
-    
-    # FLOOR ROUTES
 
-    path("floors/", FloorListView.as_view(), name="floor-list"),
-    path("floors/create/", FloorCreateView.as_view(), name="floor-create"),
-    path("floors/<int:pk>/", FloorDetailView.as_view(), name="floor-detail"),
-    path("floors/<int:pk>/update/", FloorUpdateView.as_view(), name="floor-update"),
+    # -----------------------
+    # FLOOR ROUTES
+    # -----------------------
+    path(
+        "floors/",
+        FloorListView.as_view(),
+        name="floor-list",
+    ),
+    path(
+        "floors/create/",
+        FloorCreateView.as_view(),
+        name="floor-create",
+    ),
+    path(
+        "floors/<int:pk>/",
+        FloorDetailView.as_view(),
+        name="floor-detail",
+    ),
+    path(
+        "floors/<int:pk>/update/",
+        FloorUpdateView.as_view(),
+        name="floor-update",
+    ),
 
     # Floor status operations
-    path("floors/<int:pk>/activate/", FloorActivateView.as_view(), name="floor-activate"),
-    path("floors/<int:pk>/deactivate/", FloorDeactivateView.as_view(), name="floor-deactivate"),
-    path("floors/<int:pk>/maintenance/", FloorMaintenanceView.as_view(), name="floor-maintenance"),
+    path(
+        "floors/<int:pk>/activate/",
+        FloorActivateView.as_view(),
+        name="floor-activate",
+    ),
+    path(
+        "floors/<int:pk>/deactivate/",
+        FloorDeactivateView.as_view(),
+        name="floor-deactivate",
+    ),
+    path(
+        "floors/<int:pk>/maintenance/",
+        FloorMaintenanceView.as_view(),
+        name="floor-maintenance",
+    ),
 
     # Floor restriction operations
-    path("floors/<int:pk>/restrict/", FloorSetRestrictionView.as_view(), name="floor-set-restriction"),
-    path("floors/<int:pk>/remove-restriction/", FloorRemoveRestrictionView.as_view(), name="floor-remove-restriction"),
+    path(
+        "floors/<int:pk>/restrict/",
+        FloorSetRestrictionView.as_view(),
+        name="floor-set-restriction",
+    ),
+    path(
+        "floors/<int:pk>/remove-restriction/",
+        FloorRemoveRestrictionView.as_view(),
+        name="floor-remove-restriction",
+    ),
 
     # Floor bed-configuration operations
-    path("floors/<int:pk>/bed-configuration/", FloorSetBedConfigurationView.as_view(), name="floor-set-bed-configuration"),
-    path("floors/<int:pk>/remove-bed-configuration/", FloorRemoveBedConfigurationView.as_view(), name="floor-remove-bed-configuration"),
-    
-    # ROOM ROUTES
+    path(
+        "floors/<int:pk>/bed-configuration/",
+        FloorSetBedConfigurationView.as_view(),
+        name="floor-set-bed-configuration",
+    ),
+    path(
+        "floors/<int:pk>/remove-bed-configuration/",
+        FloorRemoveBedConfigurationView.as_view(),
+        name="floor-remove-bed-configuration",
+    ),
 
-    path("rooms/", RoomListView.as_view(), name="room-list"),
-    path("rooms/create/", RoomCreateView.as_view(), name="room-create"),
-    path("rooms/<int:pk>/", RoomDetailView.as_view(), name="room-detail"),
+    # -----------------------
+    # ROOM ROUTES
+    # -----------------------
+    path(
+        "rooms/",
+        RoomListView.as_view(),
+        name="room-list",
+    ),
+    path(
+        "rooms/create/",
+        RoomCreateView.as_view(),
+        name="room-create",
+    ),
+    path(
+        "rooms/<int:pk>/",
+        RoomDetailView.as_view(),
+        name="room-detail",
+    ),
 
     # Room bed-configuration operations
     path(
@@ -177,12 +272,25 @@ urlpatterns = [
         RoomRemoveBedConfigurationView.as_view(),
         name="room-remove-bed-configuration",
     ),
-    
-    # BED ROUTES
 
-    path("beds/", BedListView.as_view(), name="bed-list"),
-    path("beds/create/", BedCreateView.as_view(), name="bed-create"),
-    path("beds/<int:pk>/", BedDetailView.as_view(), name="bed-detail"),
+    # -----------------------
+    # BED ROUTES
+    # -----------------------
+    path(
+        "beds/",
+        BedListView.as_view(),
+        name="bed-list",
+    ),
+    path(
+        "beds/create/",
+        BedCreateView.as_view(),
+        name="bed-create",
+    ),
+    path(
+        "beds/<int:pk>/",
+        BedDetailView.as_view(),
+        name="bed-detail",
+    ),
     path(
         "beds/<int:pk>/update-position/",
         BedPositionUpdateView.as_view(),
@@ -209,5 +317,39 @@ urlpatterns = [
         "beds/<int:pk>/restore/",
         BedRestoreView.as_view(),
         name="bed-restore",
+    ),
+
+    # -----------------------
+    # BED CONFIGURATION ROUTES
+    # -----------------------
+    path(
+        "bed-configurations/",
+        BedConfigurationListView.as_view(),
+        name="bed-configuration-list",
+    ),
+    path(
+        "bed-configurations/create/",
+        BedConfigurationCreateView.as_view(),
+        name="bed-configuration-create",
+    ),
+    path(
+        "bed-configurations/<int:pk>/",
+        BedConfigurationDetailView.as_view(),
+        name="bed-configuration-detail",
+    ),
+    path(
+        "bed-configurations/<int:pk>/update/",
+        BedConfigurationUpdateView.as_view(),
+        name="bed-configuration-update",
+    ),
+    path(
+        "bed-configurations/<int:pk>/activate/",
+        BedConfigurationActivateView.as_view(),
+        name="bed-configuration-activate",
+    ),
+    path(
+        "bed-configurations/<int:pk>/deactivate/",
+        BedConfigurationDeactivateView.as_view(),
+        name="bed-configuration-deactivate",
     ),
 ]
