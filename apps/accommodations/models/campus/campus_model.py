@@ -4,22 +4,35 @@ from django.utils.translation import gettext_lazy as _
 # Extensions
 from django_countries.fields import CountryField
 
+# TimeZone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from django.core.exceptions import ValidationError
+
 # Abstract Models
 from apps.core.abstract_models.timestamp_models import TimeStampModel
 
 # Managers
 from apps.accommodations.models.managers.campusQuerySet import CampusQuerySet
 
-
-"""
-This Model represents a physical campus belonging to a 
-university.
-
-A university may have multiple campuses, and campuses may
-be located in different countries or administrative regions
-"""
+def validate_iana_timezone(value: str) -> None:
+    """Validate that Python can load the configured IANA timezone."""
+    try:
+        ZoneInfo(value)
+    except (ValueError, ZoneInfoNotFoundError) as exc:
+        raise ValidationError(
+            _("Enter a valid IANA timezone, such as Asia/Shanghai."),
+            code="invalid_timezone",
+        ) from exc
 
 class Campus(TimeStampModel):
+    """
+    This Model represents a physical campus belonging to a 
+    university.
+
+    A university may have multiple campuses, and campuses may
+    be located in different countries or administrative regions
+    """
+    
     university = models.ForeignKey(
         "university.University",
         on_delete=models.PROTECT,
@@ -58,6 +71,15 @@ class Campus(TimeStampModel):
     country = CountryField(
         _("University Country"),
         blank_label="Select Country",
+    )
+    timezone = models.CharField(
+        _("Campus Timezone"),
+        max_length=64,
+        validators=[validate_iana_timezone],
+        help_text=_(
+            "Enter the IANA timezone used for campus deadlines, "
+            "such as Asia/Shanghai."
+        ),
     )
     description = models.TextField(
         blank=True,
