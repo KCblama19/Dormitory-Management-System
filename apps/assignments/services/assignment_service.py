@@ -572,3 +572,128 @@ class AssignmentService:
             checkout_request,
             update_fields=decision_fields,
         )
+        
+            @staticmethod
+    @transaction.atomic
+    def flag_eligibility_review(*, student):
+        """
+        Flag the student's active commitments for review.
+
+        Call this from the authorized student service, in the same
+        transaction as a change that requires eligibility reassessment.
+        """
+        try:
+            # Serialize with assignment operations for this student.
+            lock_instance(student, mode="exclusive")
+        except type(student).DoesNotExist as exc:
+            raise NotFoundError("The student could not be found.") from exc
+
+        return (
+            Assignment.objects.filter(
+                student_id=student.pk,
+                status__in=[
+                    Assignment.Status.RESERVED,
+                    Assignment.Status.CHECKED_IN,
+                ],
+            )
+            .exclude(review_status=Assignment.ReviewStatus.PENDING)
+            .update(
+                review_status=Assignment.ReviewStatus.PENDING,
+                reviewed_by=None,
+                reviewed_at=None,
+                updated_at=timezone.now(),
+            )
+        )
+
+    @classmethod
+    @transaction.atomic
+    def decide_eligibility_review(cls, *, actor, assignment, approve):
+        """Record the decision on an active assignment's pending review."""
+        assignment = cls._get_locked_assignment(assignment.pk)
+
+        if not AssignmentPolicy.can_review_eligibility(actor, assignment):
+            raise PermissionDenied(
+                "You do not have permission to decide this eligibility review."
+            )
+
+        if assignment.status not in {
+            Assignment.Status.RESERVED,
+            Assignment.Status.CHECKED_IN,
+        }:
+            raise ConflictError("Eligibility review requires an active assignment.")
+
+        if assignment.review_status != Assignment.ReviewStatus.PENDING:
+            raise ConflictError("This assignment has no pending eligibility review.")
+
+        if not isinstance(approve, bool):
+            raise ValidationError("The decision must specify approval or rejection.")
+
+        assignment.review_status = (
+            Assignment.ReviewStatus.APPROVED
+            if approve
+            else Assignment.ReviewStatus.REJECTED
+        )
+        assignment.reviewed_by = actor
+        assignment.reviewed_at = timezone.now()
+
+        return cls._save_assignment(
+            assignment,
+            fields=["review_status", "reviewed_by", "reviewed_at"],
+        )
+        
+    @staticmethod
+    def _require_no_approved_transfer(assignment):
+        """Prevent independent release while a transfer holds another bed."""
+        if TransferRequest.objects.filter(
+            source_assignment_id=assignment.pk,
+            status=TransferRequest.Status.APPROVED,
+        ).exists():
+            raise ConflictError(
+                "Resolve the approved transfer before releasing the assigned bed."
+            )
+
+    @classmethod
+    @transaction.atomic
+    def terminate_assignment(
+        cls,
+        *,
+        actor,
+        assignment,
+        reason,
+        departure_confirmed=False,
+    ):
+        """Administratively end a checked-in assignment after departure."""
+        assignment = cls._get_locked_assignment(assignment.pk)
+
+        if not AssignmentPolicy.can_terminate_assignment(actor, assignment):
+            raise PermissionDenied(
+                "You do not have permission to terminate this assignment."
+            )
+
+        if assignment.status != Assignment.Status.CHECKED_IN:
+            raise ConflictError("Termination requires a checked-in assignment.")
+
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValidationError("A termination reason is required.")
+
+        if departure_confirmed is not True:
+            raise ValidationError(
+                "Confirm physical departure before terminating this assignment."
+            )
+
+        cls._require_no_approved_transfer(assignment)
+
+        assignment.status = Assignment.Status.TERMINATED
+        assignment.terminated_by = actor
+        assignment.terminated_at = timezone.now()
+        assignment.termination_reason = reason.strip()
+
+        return cls._save_assignment(
+            assignment,
+            fields=[
+                "status",
+                "terminated_by",
+                "terminated_at",
+                "termination_reason",
+            ],
+        )
