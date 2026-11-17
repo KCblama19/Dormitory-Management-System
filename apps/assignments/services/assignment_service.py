@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # DJANGO EXCEPTIONS
@@ -14,10 +14,10 @@ from django.utils import timezone
 
 # MODELS IMPORT
 from apps.accommodations.models import Bed, Floor
-from apps.assignments.models import Assignment
+from apps.assignments.models import Assignment, AssignmentExtension
 
 # CORE AND APPLICATION EXCEPTIONS
-from apps.core.db.locking import lock_instance
+from apps.core.db.locking import lock_instance, get_locked_instance
 from apps.core.exceptions import (
     ConflictError,
     NotFoundError,
@@ -234,4 +234,198 @@ class AssignmentService:
         return cls._save_assignment(
             assignment,
             fields=["status", "actual_check_in", "early_check_in_approved_by"],
+        )
+        
+    @classmethod
+    @transaction.atomic
+    def process_reservation_deadline(cls, *, assignment_id):
+        """Apply one overdue or expiration transition for the scheduler."""
+        assignment = cls._get_locked_assignment(assignment_id)
+
+        if (
+            assignment.status != Assignment.Status.RESERVED
+            or assignment.transfer_request_id is not None
+        ):
+            return None
+
+        # Check the clock and deadline after locking. A check-in or
+        # extension approval may have completed while this call waited.
+        now = timezone.now()
+        campus = assignment.bed.room.floor.building.campus
+        local_date = _campus_local_date(campus, now)
+
+        if local_date > _last_check_in_date(assignment):
+            assignment.status = Assignment.Status.EXPIRED
+            assignment.expired_at = now
+            cls._save_assignment(
+                assignment,
+                fields=["status", "expired_at"],
+            )
+            return "expired"
+
+        if (
+            local_date > assignment.check_in_deadline
+            and assignment.overdue_at is None
+        ):
+            assignment.overdue_at = now
+            cls._save_assignment(assignment, fields=["overdue_at"])
+            return "overdue"
+
+        return None
+    
+    @classmethod
+    def _get_extension_local_date(cls, assignment, now):
+        """Return the local date while the reservation can still be extended."""
+        cls._require_allocation_reservation(assignment)
+
+        campus = assignment.bed.room.floor.building.campus
+        local_date = _campus_local_date(campus, now)
+
+        if local_date > _last_check_in_date(assignment):
+            raise ConflictError(
+                "The reservation's check-in deadline and grace period have passed."
+            )
+
+        return local_date
+
+    @staticmethod
+    def _save_extension(extension, *, update_fields=None):
+        try:
+            with transaction.atomic():
+                extension.full_clean()
+                if update_fields is None:
+                    extension.save(force_insert=True)
+                else:
+                    extension.save(update_fields=[*update_fields, "updated_at"])
+        except DjangoValidationError as exc:
+            raise ValidationError(" ".join(exc.messages)) from exc
+        except IntegrityError as exc:
+            raise ConflictError(
+                "The extension conflicts with an existing record."
+            ) from exc
+
+        return extension
+
+    @classmethod
+    @transaction.atomic
+    def request_extension(
+        cls,
+        *,
+        actor,
+        assignment,
+        requested_check_in_deadline,
+        reason="",
+    ):
+        """Request a later check-in deadline for the student's reservation."""
+        assignment = cls._get_locked_assignment(assignment.pk)
+
+        if not AssignmentPolicy.can_request_extension(actor, assignment):
+            raise PermissionDenied(
+                "You can only request an extension for your own assignment."
+            )
+
+        cls._get_extension_local_date(assignment, timezone.now())
+
+        if (
+            not isinstance(requested_check_in_deadline, date)
+            or isinstance(requested_check_in_deadline, datetime)
+        ):
+            raise ValidationError("Supply a calendar date for the requested deadline.")
+
+        if requested_check_in_deadline <= assignment.check_in_deadline:
+            raise ValidationError(
+                "The requested deadline must be later than the current deadline."
+            )
+
+        if not isinstance(reason, str):
+            raise ValidationError("The extension reason must be text.")
+
+        if assignment.extensions.filter(
+            status=AssignmentExtension.Status.PENDING,
+        ).exists():
+            raise ConflictError("This assignment already has a pending extension.")
+
+        return cls._save_extension(
+            AssignmentExtension(
+                assignment=assignment,
+                requested_check_in_deadline=requested_check_in_deadline,
+                reason=reason.strip(),
+            )
+        )
+
+    @classmethod
+    @transaction.atomic
+    def decide_extension(cls, *, actor, extension, approve, decision_note=""):
+        """Approve or reject a pending extension and record the decision."""
+        try:
+            assignment_id = AssignmentExtension.objects.values_list(
+                "assignment_id",
+                flat=True,
+            ).get(pk=extension.pk)
+
+            # Lock the assignment first so this decision serializes with
+            # check-in, cancellation, and the no-show expiration command.
+            assignment = cls._get_locked_assignment(assignment_id)
+            extension = get_locked_instance(
+                AssignmentExtension,
+                extension.pk,
+                mode="exclusive",
+            )
+        except AssignmentExtension.DoesNotExist as exc:
+            raise NotFoundError("The extension request could not be found.") from exc
+
+        if extension.assignment_id != assignment.pk:
+            raise ConflictError(
+                "The extension's assignment changed. Please retry."
+            )
+
+        extension.assignment = assignment
+
+        if not AssignmentPolicy.can_decide_extension(actor, extension):
+            raise PermissionDenied(
+                "You do not have permission to decide this extension."
+            )
+
+        if extension.status != AssignmentExtension.Status.PENDING:
+            raise ConflictError("This extension has already been decided.")
+
+        if not isinstance(approve, bool):
+            raise ValidationError("The decision must specify approval or rejection.")
+
+        if not isinstance(decision_note, str):
+            raise ValidationError("The decision note must be text.")
+
+        now = timezone.now()
+
+        if approve:
+            local_date = cls._get_extension_local_date(assignment, now)
+            requested_deadline = extension.requested_check_in_deadline
+
+            if requested_deadline <= assignment.check_in_deadline:
+                raise ConflictError(
+                    "The requested deadline is no longer later than "
+                    "the assignment's current deadline."
+                )
+
+            assignment.check_in_deadline = requested_deadline
+            fields = ["check_in_deadline"]
+
+            # A deadline on or after today brings the reservation out
+            # of overdue status. It can become overdue again later.
+            if local_date <= requested_deadline and assignment.overdue_at is not None:
+                assignment.overdue_at = None
+                fields.append("overdue_at")
+
+            cls._save_assignment(assignment, fields=fields)
+            extension.status = AssignmentExtension.Status.APPROVED
+        else:
+            extension.status = AssignmentExtension.Status.REJECTED
+
+        extension.decided_by = actor
+        extension.decided_at = now
+        extension.decision_note = decision_note.strip()
+
+        return cls._save_extension(
+            extension,
+            update_fields=["status", "decided_by", "decided_at", "decision_note"],
         )
