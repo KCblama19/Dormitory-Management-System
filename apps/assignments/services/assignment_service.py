@@ -14,7 +14,12 @@ from django.utils import timezone
 
 # MODELS IMPORT
 from apps.accommodations.models import Bed, Floor
-from apps.assignments.models import Assignment, AssignmentExtension
+from apps.assignments.models import (
+    Assignment, 
+    AssignmentExtension,
+    CheckoutRequest,
+    TransferRequest
+)
 
 # CORE AND APPLICATION EXCEPTIONS
 from apps.core.db.locking import lock_instance, get_locked_instance
@@ -289,22 +294,22 @@ class AssignmentService:
         return local_date
 
     @staticmethod
-    def _save_extension(extension, *, update_fields=None):
+    def _save_workflow_request(request, *, update_fields=None):
         try:
             with transaction.atomic():
-                extension.full_clean()
+                request.full_clean()
                 if update_fields is None:
-                    extension.save(force_insert=True)
+                    request.save(force_insert=True)
                 else:
-                    extension.save(update_fields=[*update_fields, "updated_at"])
+                    request.save(update_fields=[*update_fields, "updated_at"])
         except DjangoValidationError as exc:
             raise ValidationError(" ".join(exc.messages)) from exc
         except IntegrityError as exc:
             raise ConflictError(
-                "The extension conflicts with an existing record."
+                "The request conflicts with an existing record."
             ) from exc
 
-        return extension
+        return request
 
     @classmethod
     @transaction.atomic
@@ -345,7 +350,7 @@ class AssignmentService:
         ).exists():
             raise ConflictError("This assignment already has a pending extension.")
 
-        return cls._save_extension(
+        return cls._save_workflow_request(
             AssignmentExtension(
                 assignment=assignment,
                 requested_check_in_deadline=requested_check_in_deadline,
@@ -425,7 +430,145 @@ class AssignmentService:
         extension.decided_at = now
         extension.decision_note = decision_note.strip()
 
-        return cls._save_extension(
+        return cls._save_workflow_request(
             extension,
             update_fields=["status", "decided_by", "decided_at", "decision_note"],
+        )
+        
+    @classmethod
+    @transaction.atomic
+    def request_checkout(
+        cls,
+        *,
+        actor,
+        assignment,
+        requested_checkout_date,
+        reason="",
+    ):
+        """Submit a checkout request for the student's occupied assignment."""
+        assignment = cls._get_locked_assignment(assignment.pk)
+
+        if not AssignmentPolicy.can_request_checkout(actor, assignment):
+            raise PermissionDenied(
+                "You can only request checkout for your own assignment."
+            )
+
+        if assignment.status != Assignment.Status.CHECKED_IN:
+            raise ConflictError("Checkout requires a checked-in assignment.")
+
+        if (
+            not isinstance(requested_checkout_date, date)
+            or isinstance(requested_checkout_date, datetime)
+        ):
+            raise ValidationError("Supply a calendar date for the requested checkout.")
+
+        if not isinstance(reason, str):
+            raise ValidationError("The checkout reason must be text.")
+
+        if assignment.checkout_requests.filter(
+            status=CheckoutRequest.Status.PENDING,
+        ).exists():
+            raise ConflictError("This assignment already has a pending checkout request.")
+
+        return cls._save_workflow_request(
+            CheckoutRequest(
+                assignment=assignment,
+                requested_checkout_date=requested_checkout_date,
+                reason=reason.strip(),
+            )
+        )
+
+    @classmethod
+    @transaction.atomic
+    def resolve_checkout_request(
+        cls,
+        *,
+        actor,
+        checkout_request,
+        approve,
+        departure_confirmed=False,
+        decision_note="",
+    ):
+        """Resolve a checkout request and release the bed on approval."""
+        request_id = checkout_request.pk
+
+        try:
+            assignment_id = CheckoutRequest.objects.values_list(
+                "assignment_id",
+                flat=True,
+            ).get(pk=request_id)
+
+            # Lock the assignment first so the decision uses fresh
+            # occupancy state and shares the transfer workflow's lock order.
+            assignment = cls._get_locked_assignment(assignment_id)
+            checkout_request = get_locked_instance(
+                CheckoutRequest,
+                request_id,
+                mode="exclusive",
+            )
+        except CheckoutRequest.DoesNotExist as exc:
+            raise NotFoundError("The checkout request could not be found.") from exc
+
+        if checkout_request.assignment_id != assignment.pk:
+            raise ConflictError("The checkout request's assignment changed. Please retry.")
+
+        checkout_request.assignment = assignment
+
+        if not AssignmentPolicy.can_resolve_checkout_request(actor, checkout_request):
+            raise PermissionDenied(
+                "You do not have permission to resolve this checkout request."
+            )
+
+        if checkout_request.status != CheckoutRequest.Status.PENDING:
+            raise ConflictError("This checkout request has already been resolved.")
+
+        if not isinstance(approve, bool):
+            raise ValidationError("The decision must specify approval or rejection.")
+
+        if not isinstance(decision_note, str):
+            raise ValidationError("The decision note must be text.")
+
+        now = timezone.now()
+        decision_fields = ["status", "decided_by", "decided_at", "decision_note"]
+
+        if approve:
+            if not AssignmentPolicy.can_complete_checkout(actor, assignment):
+                raise PermissionDenied("You do not have permission to complete checkout.")
+
+            if assignment.status != Assignment.Status.CHECKED_IN:
+                raise ConflictError("Checkout requires a checked-in assignment.")
+
+            if departure_confirmed is not True:
+                raise ValidationError("Confirm physical departure before approving checkout.")
+
+            # An approved transfer may already hold a destination bed.
+            # Resolve that transfer before releasing the source independently.
+            if TransferRequest.objects.filter(
+                source_assignment_id=assignment.pk,
+                status=TransferRequest.Status.APPROVED,
+            ).exists():
+                raise ConflictError(
+                    "Resolve the approved transfer before completing checkout."
+                )
+
+            assignment.status = Assignment.Status.CHECKED_OUT
+            assignment.actual_check_out = now
+            cls._save_assignment(
+                assignment,
+                fields=["status", "actual_check_out"],
+            )
+
+            checkout_request.status = CheckoutRequest.Status.APPROVED
+            checkout_request.departure_verified_at = now
+            decision_fields.append("departure_verified_at")
+        else:
+            checkout_request.status = CheckoutRequest.Status.REJECTED
+
+        checkout_request.decided_by = actor
+        checkout_request.decided_at = now
+        checkout_request.decision_note = decision_note.strip()
+
+        return cls._save_workflow_request(
+            checkout_request,
+            update_fields=decision_fields,
         )
