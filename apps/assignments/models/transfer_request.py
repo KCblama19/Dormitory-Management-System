@@ -41,6 +41,7 @@ class TransferRequest(TimeStampModel):
         REJECTED = "REJECTED", _("Rejected")
         CANCELLED = "CANCELLED", _("Cancelled")
         COMPLETED = "COMPLETED", _("Completed")
+        EXPIRED = "EXPIRED", _("Expired")
 
     id = models.UUIDField(
         primary_key=True,
@@ -296,7 +297,7 @@ class TransferRequest(TimeStampModel):
             # -------------------------------------------------
             models.CheckConstraint(
                 condition=(
-                    ~Q(status="APPROVED")
+                    ~Q(status_in=["APPROVED", "EXPIRED"])
                     |
                     Q(
                         decided_at__isnull=False,

@@ -31,7 +31,7 @@ from apps.core.exceptions import (
 )
 
 # POLICIES
-from apps.assignments.policies.assignment_policy import AssignmentPolicy
+from dorm_system.apps.core.policies.assignment_policy import AssignmentPolicy
 
 
 def _campus_local_date(campus, instant):
@@ -573,7 +573,7 @@ class AssignmentService:
             update_fields=decision_fields,
         )
         
-            @staticmethod
+    @staticmethod
     @transaction.atomic
     def flag_eligibility_review(*, student):
         """
