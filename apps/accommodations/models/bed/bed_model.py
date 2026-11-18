@@ -157,17 +157,11 @@ class Bed(TimeStampModel):
 
     @property
     def is_occupied(self):
-        """
-        Return whether this bed currently has an active student assignment.
+        """Return whether a student has checked in and still occupies this bed."""
+        from apps.assignments.models import Assignment
 
-        The actual assignment relationship is implemented by the
-        accommodation assignment model.
-
-        This property intentionally does not store an `is_occupied` field
-        because occupancy is transactional state derived from assignments.
-        """
         return self.assignments.filter(
-            status="ACTIVE"
+            status=Assignment.Status.CHECKED_IN,
         ).exists()
 
     def clean(self):
