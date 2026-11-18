@@ -260,7 +260,14 @@ class TransferService:
             actor, source=source, destination_building=building,
         ):
             raise PermissionDenied("You do not have permission to request this transfer.")
+        
+        source_campus = source.bed.room.floor.building.campus
 
+        if not source_campus.is_active:
+            raise ConflictError(
+                "A transfer cannot be requested from an inactive campus."
+            )
+            
         if not isinstance(reason, str) or not reason.strip():
             raise ValidationError("A transfer reason is required.")
 

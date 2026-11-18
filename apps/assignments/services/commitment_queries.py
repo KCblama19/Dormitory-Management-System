@@ -14,13 +14,8 @@ def campus_has_unresolved_commitments(*, campus_id):
     ).exists():
         return True
 
-    if AllocationRequest.objects.filter(
+    if AllocationRequest.objects.unresolved().filter(
         building__campus_id=campus_id,
-        status__in=[
-            AllocationRequest.Status.PENDING,
-            AllocationRequest.Status.AWAITING_CONFIRMATION,
-            AllocationRequest.Status.PARTIALLY_ALLOCATED,
-        ],
     ).exists():
         return True
 
@@ -34,3 +29,21 @@ def campus_has_unresolved_commitments(*, campus_id):
             TransferRequest.Status.APPROVED,
         ],
     ).exists()
+    
+def committed_bed_ids(*, bed_ids):
+    """Return the supplied beds that are reserved or checked in.
+
+    Callers changing inventory must hold the relevant room and bed locks
+    before using this result to decide whether a change can proceed.
+    """
+    return set(
+        Assignment.objects.filter(
+            bed_id__in=bed_ids,
+            status__in=(
+                Assignment.Status.RESERVED,
+                Assignment.Status.CHECKED_IN,
+            ),
+        )
+        .order_by()
+        .values_list("bed_id", flat=True)
+    )
