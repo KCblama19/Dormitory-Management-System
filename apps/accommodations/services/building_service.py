@@ -5,6 +5,7 @@ from django.db.models import Max, Q
 from apps.assignments.services.commitment_queries import (
     active_housing_assignments,
     building_has_unresolved_commitments,
+    beds_requiring_valid_position,
 )
 
 # DATABASE LOCKING
@@ -245,13 +246,11 @@ class BuildingService:
         if not room_ids:
             return configuration
 
-        highest_positions = (
-            Bed.objects
-            .filter(room_id__in=room_ids)
-            .values("room_id")
-            .annotate(
-                highest_position=Max("position"),
-            )
+        beds = beds_requiring_valid_position(
+            Bed.objects.filter(room_id__in=room_ids)
+        )
+        highest_positions = beds.values("room_id").annotate(
+            highest_position=Max("position"),
         )
 
         incompatible_rooms = [

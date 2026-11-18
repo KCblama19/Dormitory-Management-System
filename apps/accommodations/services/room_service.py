@@ -1,7 +1,10 @@
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
+
+from apps.assignments.services.commitment_queries import (
+    beds_requiring_valid_position,
+)
 
 # Models
 from apps.accommodations.models import (
@@ -376,14 +379,14 @@ class RoomService:
         # During room creation, there cannot be any existing beds.
         if not room.pk:
             return
-
-        highest_position = (
-            Bed.objects
-            .filter(room_id=room.pk)
-            .aggregate(
-                highest_position=Max("position"),
-            )["highest_position"]
+        
+        beds = beds_requiring_valid_position(
+            Bed.objects.filter(room_id=room.pk)
         )
+        
+        highest_position = beds.aggregate(
+            highest_position=Max("position"),
+        )["highest_position"]
 
         if (
             highest_position is not None

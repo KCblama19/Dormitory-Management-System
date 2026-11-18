@@ -1,6 +1,9 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
-from apps.assignments.services.commitment_queries import committed_bed_ids
+from apps.assignments.services.commitment_queries import (
+    committed_bed_ids,
+    beds_requiring_valid_position,
+)
 
 # MODELS
 from apps.accommodations.models import (
@@ -402,23 +405,21 @@ class BedService:
         BedService._validate_configuration(configuration)
         BedService._validate_floor_operational(floor)
 
-        existing_positions = set(
-            Bed.objects.filter(room=locked_room).values_list(
-                "position",
-                flat=True,
-            )
-        )
+        room_beds = Bed.objects.filter(room=locked_room)
 
-        # Never remove or silently invalidate existing physical beds.
-        if (
-            existing_positions
-            and max(existing_positions) > configuration.bed_count
-        ):
+        if beds_requiring_valid_position(room_beds).filter(
+            position__gt=configuration.bed_count,
+        ).exists():
             raise ConflictError(
-                "The room contains bed positions beyond its "
-                "configured capacity. Resolve the existing beds "
-                "before generating additional beds."
+                "This room has bed positions beyond its configured capacity. "
+                "Resolve the existing beds before generating additional beds."
             )
+
+        # Retired rows still own their unique room and position. The room
+        # expansion workflow can restore those rows when capacity increases.
+        existing_positions = set(
+            room_beds.values_list("position", flat=True)
+        )
 
         created_beds = []
 

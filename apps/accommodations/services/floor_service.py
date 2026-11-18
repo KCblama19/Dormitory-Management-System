@@ -2,6 +2,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
 
+from apps.assignments.services.commitment_queries import (
+    beds_requiring_valid_position,
+)
+
 # Models
 from apps.accommodations.models import (
     Bed,
@@ -328,15 +332,13 @@ class FloorService:
         if not room_ids:
             return
 
+        beds = beds_requiring_valid_position(
+            Bed.objects.filter(room_id__in=room_ids)
+        )
         highest_positions = {
             item["room_id"]: item["highest_position"]
-            for item in (
-                Bed.objects
-                .filter(room_id__in=room_ids)
-                .values("room_id")
-                .annotate(
-                    highest_position=Max("position"),
-                )
+            for item in beds.values("room_id").annotate(
+                highest_position=Max("position"),
             )
         }
 

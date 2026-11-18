@@ -2,6 +2,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
 
+from apps.assignments.services.commitment_queries import (
+    beds_requiring_valid_position,
+)
+
 # MODELS
 from apps.accommodations.models import (
     Bed,
@@ -214,18 +218,16 @@ class BedConfigurationService:
         )
 
         # Only the highest physical position in each room is needed.
+        beds = beds_requiring_valid_position(
+            Bed.objects.filter(
+                room_id__in=affected_rooms.values("pk"),
+            )
+        )
+
         highest_positions = (
-            Bed.objects
-            .filter(
-                room_id__in=affected_rooms.values("pk")
-            )
-            .values("room_id")
-            .annotate(
-                highest_position=Max("position")
-            )
-            .filter(
-                highest_position__gt=new_bed_count
-            )
+            beds.values("room_id")
+            .annotate(highest_position=Max("position"))
+            .filter(highest_position__gt=new_bed_count)
             .order_by("room_id")
         )
 
