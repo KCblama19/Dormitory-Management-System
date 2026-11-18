@@ -1,6 +1,11 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Max
+from django.db.models import Max, Q
+
+from apps.assignments.services.commitment_queries import (
+    active_housing_assignments,
+    building_has_unresolved_commitments,
+)
 
 # DATABASE LOCKING
 from apps.core.db.locking import get_locked_instance
@@ -294,27 +299,47 @@ class BuildingService:
     # =========================================================
 
     @staticmethod
-    def _apply_gender_policy(
-        actor,
-        building: Building,
-        gender_policy,
-    ) -> None:
-        """Authorize and validate a Building gender-policy change."""
-        if not AccommodationPolicy.can_change_building_gender_policy(
-            actor,
-            building,
-        ):
+    def _apply_gender_policy(actor, building: Building, gender_policy) -> None:
+        """Apply a building gender policy that permits existing commitments."""
+        if not AccommodationPolicy.can_change_building_gender_policy(actor, building):
             raise PermissionDenied(
-                "You do not have permission to change this "
-                "building's gender policy."
+                "You do not have permission to change this building's gender policy."
             )
 
-        # The exclusive Building lock already prevents compliant
-        # FloorService operations from changing descendant Floors.
-        BuildingService._validate_active_floor_gender(
-            building,
-            gender_policy,
+        if gender_policy == building.gender_policy:
+            return
+
+        BuildingService._validate_active_floor_gender(building, gender_policy)
+
+        assignments = active_housing_assignments().filter(
+            bed__room__floor__building_id=building.pk,
         )
+
+        if gender_policy == Building.GenderPolicy.MIXED:
+            # Moving to MIXED makes the stored floor gender settings
+            # effective again, so check each assignment against its floor.
+            incompatible = assignments.filter(
+                (
+                    Q(bed__room__floor__gender_configuration=Floor.GenderConfiguration.MALE)
+                    & ~Q(student__gender__code="M")
+                )
+                | (
+                    Q(bed__room__floor__gender_configuration=Floor.GenderConfiguration.FEMALE)
+                    & ~Q(student__gender__code="F")
+                )
+            )
+        else:
+            required_gender = {
+                Building.GenderPolicy.MALE_ONLY: "M",
+                Building.GenderPolicy.FEMALE_ONLY: "F",
+            }[gender_policy]
+            incompatible = assignments.exclude(student__gender__code=required_gender)
+
+        if incompatible.exists():
+            raise ConflictError(
+                "The proposed gender policy conflicts with a reservation "
+                "or a checked-in student in this building."
+            )
 
         building.gender_policy = gender_policy
 
@@ -324,14 +349,36 @@ class BuildingService:
         building: Building,
         student_population,
     ) -> None:
-        """Authorize and apply a student-population change."""
-        if not AccommodationPolicy.can_change_building_population(
-            actor,
-            building,
-        ):
+        """Apply a population policy that permits existing commitments."""
+        if not AccommodationPolicy.can_change_building_population(actor, building):
             raise PermissionDenied(
-                "You do not have permission to change this "
-                "building's student population."
+                "You do not have permission to change this building's student population."
+            )
+
+        if student_population == building.student_population:
+            return
+
+        if student_population not in Building.StudentPopulation.values:
+            raise ValidationError("Invalid building student population.")
+
+        assignments = active_housing_assignments().filter(
+            bed__room__floor__building_id=building.pk,
+        )
+
+        # Use the same nationality rule as allocation. Students without
+        # a recorded nationality do not qualify for either population.
+        if student_population == Building.StudentPopulation.CHINESE:
+            incompatible = assignments.exclude(student__nationality="CN")
+        else:
+            incompatible = assignments.filter(
+                Q(student__nationality__in=("CN", ""))
+                | Q(student__nationality__isnull=True)
+            )
+
+        if incompatible.exists():
+            raise ConflictError(
+                "The proposed student population conflicts with a reservation "
+                "or a checked-in student in this building."
             )
 
         building.student_population = student_population
@@ -604,41 +651,31 @@ class BuildingService:
 
     @staticmethod
     @transaction.atomic
-    def deactivate_building(
-        actor,
-        building: Building,
-    ) -> Building:
-        """
-        Deactivate a Building only when it has no active Floors.
-
-        The exclusive Building lock prevents compliant FloorService
-        operations from changing Floor state during this check.
-        """
+    def deactivate_building(actor, building: Building) -> Building:
+        """Deactivate a building after its floors and commitments are resolved."""
         building = BuildingService._get_locked_building(building)
 
-        if not AccommodationPolicy.can_deactivate_building(
-            actor,
-            building,
-        ):
+        if not AccommodationPolicy.can_deactivate_building(actor, building):
             raise PermissionDenied(
                 "You do not have permission to deactivate this building."
             )
 
-        if building.floors.filter(
-            status=Floor.FloorStatus.ACTIVE,
-        ).exists():
+        if building.floors.filter(status=Floor.FloorStatus.ACTIVE).exists():
             raise ValidationError(
-                "Cannot deactivate a building while it contains "
-                "active floors."
+                "Cannot deactivate a building while it contains active floors."
             )
 
         if not building.is_active:
-            raise ValidationError(
-                "This building is already inactive."
+            raise ValidationError("This building is already inactive.")
+
+        if building_has_unresolved_commitments(building_id=building.pk):
+            raise ConflictError(
+                "Resolve this building's reservations, assignments, "
+                "allocation requests, and open transfers before deactivation."
             )
 
         building.is_active = False
-
+        
         return BuildingService._save_building(building)
 
     # =========================================================

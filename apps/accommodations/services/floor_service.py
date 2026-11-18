@@ -25,6 +25,11 @@ from apps.core.exceptions import (
     NotFoundError,
 )
 
+from apps.assignments.services.commitment_queries import (
+    active_housing_assignments,
+    floor_has_active_assignments,
+)
+
 
 class FloorService:
     """
@@ -130,7 +135,12 @@ class FloorService:
             raise NotFoundError(
                 "The requested floor could not be found."
             ) from exc
-
+            
+        if locked_floor.building_id != building_id:
+            raise ConflictError(
+                "The floor's building changed during the operation. Please retry."
+            )
+            
         # Load related state only after the Floor has been locked.
         # The Building row is already protected by our shared lock.
         locked_floor = (
@@ -422,74 +432,59 @@ class FloorService:
 
     @classmethod
     @transaction.atomic
-    def update_floor(
-        cls,
-        *,
-        actor,
-        floor,
-        **changes,
-    ):
-        """
-        Update permitted Floor fields.
-
-        Restriction fields are deliberately excluded. They must be
-        changed through the dedicated restriction operations.
-
-        The exclusive Floor lock coordinates with child operations
-        that acquire shared Floor locks before modifying Rooms or Beds.
-        """
-
+    def update_floor(cls, *, actor, floor, **changes):
+        """Update floor configuration and protect existing reservations."""
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_update_floor(
-            actor,
-            floor,
-        ):
+        if not AccommodationPolicy.can_update_floor(actor, floor):
             raise PermissionDenied(
-                "You do not have permission to update floors "
-                "in this building."
+                "You do not have permission to update floors in this building."
             )
 
-        allowed_fields = {
-            "max_rooms_per_floor",
-            "gender_configuration",
-        }
-
+        allowed_fields = {"max_rooms_per_floor", "gender_configuration"}
         unknown_fields = set(changes) - allowed_fields
-
         if unknown_fields:
             field = sorted(unknown_fields)[0]
-
-            raise ValidationError(
-                f"'{field}' cannot be edited."
-            )
+            raise ValidationError(f"'{field}' cannot be edited.")
 
         if "max_rooms_per_floor" in changes:
             new_limit = changes["max_rooms_per_floor"]
-
             if new_limit is None or new_limit < 1:
-                raise ValidationError(
-                    "Maximum rooms per floor must be at least one."
-                )
+                raise ValidationError("Maximum rooms per floor must be at least one.")
 
             highest_position = floor.rooms.aggregate(
                 highest_position=Max("position"),
             )["highest_position"]
 
-            if (
-                highest_position is not None
-                and highest_position > new_limit
-            ):
+            if highest_position is not None and highest_position > new_limit:
                 raise ConflictError(
                     "Maximum rooms per floor cannot be lower than "
                     "the highest existing room position."
                 )
 
         if "gender_configuration" in changes:
-            cls._validate_gender_configuration(
-                floor.building,
-                changes["gender_configuration"],
-            )
+            new_configuration = changes["gender_configuration"]
+            cls._validate_gender_configuration(floor.building, new_configuration)
+
+            required_gender = {
+                Floor.GenderConfiguration.MALE: "M",
+                Floor.GenderConfiguration.FEMALE: "F",
+            }.get(new_configuration)
+
+            # A narrower floor policy is safe only if everyone with a
+            # current commitment still qualifies under it.
+            if (
+                new_configuration != floor.gender_configuration
+                and required_gender is not None
+                and active_housing_assignments()
+                .filter(bed__room__floor_id=floor.pk)
+                .exclude(student__gender__code=required_gender)
+                .exists()
+            ):
+                raise ConflictError(
+                    "The proposed gender configuration conflicts with a "
+                    "reservation or a checked-in student on this floor."
+                )
 
         for field, value in changes.items():
             setattr(floor, field, value)
@@ -535,51 +530,43 @@ class FloorService:
     @classmethod
     @transaction.atomic
     def deactivate_floor(cls, actor, floor):
-        """
-        Deactivate a Floor.
-
-        Occupancy validation remains deferred until AssignmentService
-        is implemented.
-        """
-
+        """Deactivate a floor after its reservations and stays are resolved."""
+        
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_deactivate_floor(
-            actor,
-            floor,
-        ):
+        if not AccommodationPolicy.can_deactivate_floor(actor, floor):
             raise PermissionDenied(
                 "You do not have permission to deactivate this floor."
             )
 
-        floor.status = Floor.FloorStatus.INACTIVE
+        if floor_has_active_assignments(floor_id=floor.pk):
+            raise ConflictError(
+                "This floor has reservations or checked-in students."
+            )
 
+        floor.status = Floor.FloorStatus.INACTIVE
         return cls._save_floor(floor)
 
     @classmethod
     @transaction.atomic
     def set_maintenance(cls, actor, floor):
-        """
-        Set the Floor operational status to Maintenance.
-
-        Occupancy-dependent restrictions remain deferred until
-        AssignmentService is implemented.
-        """
-
+        """Place a floor into maintenance once its beds are uncommitted."""
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_set_floor_maintenance(
-            actor,
-            floor,
-        ):
+        if not AccommodationPolicy.can_set_floor_maintenance(actor, floor):
             raise PermissionDenied(
-                "You do not have permission to set this floor "
-                "for maintenance."
+                "You do not have permission to set this floor for maintenance."
+            )
+
+        if floor_has_active_assignments(floor_id=floor.pk):
+            raise ConflictError(
+                "Resolve this floor's reservations and checked-in stays "
+                "before placing it into maintenance."
             )
 
         floor.status = Floor.FloorStatus.MAINTENANCE
-
         return cls._save_floor(floor)
+
 
     # ---------------------------------------------------------
     # FLOOR RESTRICTIONS
@@ -587,61 +574,26 @@ class FloorService:
 
     @classmethod
     @transaction.atomic
-    def set_restriction(
-        cls,
-        actor,
-        floor,
-        note=None,
-    ):
-        """
-        Restrict a Floor and record the reason.
-
-        Restriction changes use an exclusive Floor lock so that
-        room and bed operations following the shared-Floor protocol
-        coordinate with the restriction change.
-        """
-
+    def set_restriction(cls, actor, floor, note=None):
+        """Restrict a floor or update the note on an existing restriction."""
         floor = cls._get_locked_floor(floor)
 
-        if not AccommodationPolicy.can_set_floor_restriction(
-            actor,
-            floor,
-        ):
+        if not AccommodationPolicy.can_set_floor_restriction(actor, floor):
             raise PermissionDenied(
                 "You do not have permission to restrict this floor."
             )
 
-        if not note or not note.strip():
-            raise ValidationError(
-                "A restriction note is required."
+        if not isinstance(note, str) or not note.strip():
+            raise ValidationError("A restriction note is required.")
+
+        if not floor.is_restricted and floor_has_active_assignments(floor_id=floor.pk):
+            raise ConflictError(
+                "Resolve this floor's reservations and checked-in stays "
+                "before applying a restriction."
             )
 
         floor.is_restricted = True
         floor.restriction_note = note.strip()
-
-        return cls._save_floor(floor)
-
-    @classmethod
-    @transaction.atomic
-    def remove_restriction(cls, actor, floor):
-        """
-        Remove a Floor restriction and clear its restriction note.
-        """
-
-        floor = cls._get_locked_floor(floor)
-
-        if not AccommodationPolicy.can_remove_floor_restriction(
-            actor,
-            floor,
-        ):
-            raise PermissionDenied(
-                "You do not have permission to remove this "
-                "floor restriction."
-            )
-
-        floor.is_restricted = False
-        floor.restriction_note = None
-
         return cls._save_floor(floor)
 
     # ---------------------------------------------------------
