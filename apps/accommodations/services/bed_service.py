@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
+from apps.assignments.services.commitment_queries import committed_bed_ids
 
 # MODELS
 from apps.accommodations.models import (
@@ -486,23 +487,31 @@ class BedService:
 
     @staticmethod
     def _change_status(*, actor, bed, new_status) -> Bed:
-        """Authorize and persist a bed status transition."""
+        """Change a bed's status while its room and bed locks are held."""
+        locked_bed, _, _, _ = BedService._get_locked_bed(bed)
 
-        locked_bed, room, floor, configuration = (
-            BedService._get_locked_bed(bed)
-        )
-
-        if not AccommodationPolicy.can_manage_bed_operations(
-            actor,
-            locked_bed,
-        ):
+        if not AccommodationPolicy.can_manage_bed_operations(actor, locked_bed):
             raise PermissionDenied(
                 "You do not have permission to change this bed's status."
             )
-            
+
+        unavailable_statuses = {
+            Bed.Status.MAINTENANCE,
+            Bed.Status.OUT_OF_SERVICE,
+            Bed.Status.RETIRED,
+        }
+
+        # Allocation takes the same room lock before it can reserve the bed.
+        # Check commitments here, while both locks are still held.
+        if new_status in unavailable_statuses and committed_bed_ids(
+            bed_ids=(locked_bed.pk,),
+        ):
+            raise ConflictError(
+                "This bed has a reservation or a checked-in student. "
+                "Resolve the assignment before making the bed unavailable."
+            )
 
         locked_bed.status = new_status
-
         return BedService._save_bed(locked_bed)
 
     @staticmethod
@@ -546,28 +555,12 @@ class BedService:
     @staticmethod
     @transaction.atomic
     def set_out_of_service(*, actor, bed) -> Bed:
-        """
-        Take a bed out of service.
-
-        An active-assignment check must be added when the Assignment
-        model and its lifecycle rules are available.
-        """
-
-        locked_bed, room, floor, configuration = (
-            BedService._get_locked_bed(bed)
+        """Take an uncommitted bed out of service."""
+        return BedService._change_status(
+            actor=actor,
+            bed=bed,
+            new_status=Bed.Status.OUT_OF_SERVICE,
         )
-
-        if not AccommodationPolicy.can_manage_bed_operations(
-            actor,
-            locked_bed,
-        ):
-            raise PermissionDenied(
-                "You do not have permission to change this bed's status."
-            )
-
-        locked_bed.status = Bed.Status.OUT_OF_SERVICE
-
-        return BedService._save_bed(locked_bed)
 
     @staticmethod
     @transaction.atomic
