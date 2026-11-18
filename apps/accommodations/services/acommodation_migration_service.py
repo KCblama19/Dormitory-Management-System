@@ -2,6 +2,7 @@
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Max
+from apps.assignments.services.commitment_queries import committed_bed_ids
 
 # MODELS
 from apps.accommodations.models import (
@@ -101,6 +102,7 @@ class AccommodationMigrationService:
             room = (
                 Room.objects
                 .select_for_update()
+                .select_for_update(of=("self",))
                 .select_related(
                     "floor",
                     "floor__building",
@@ -119,9 +121,16 @@ class AccommodationMigrationService:
             raise NotFoundError(
                 "The accommodation hierarchy could not be found."
             ) from exc
-
+        
+        # The parent path may have changed between discovery and locking. 
+        if floor.building_id != building.pk or room.floor_id != floor.pk:
+            raise ConflictError(
+                "The room's accommodation hierarchy changed. Please retry."
+            )
+            
         return building, floor, room
-
+    
+    
     @staticmethod
     def _get_locked_configuration(configuration):
         """
@@ -248,30 +257,25 @@ class AccommodationMigrationService:
         ]
 
     @staticmethod
-    def _validate_beds_are_unoccupied(beds):
-        """
-        Prevent retirement of beds that currently have active assignments.
+    def _validate_beds_can_be_retired(beds):
+        """Check the beds that will be retired while their locks are held."""
+        protected_ids = committed_bed_ids(
+            bed_ids=[bed.pk for bed in beds],
+        )
+        if not protected_ids:
+            return
 
-        This depends on Bed.is_occupied being correctly implemented
-        against the Assignment model.
-        """
-
-        occupied_beds = [
-            bed for bed in beds
-            if bed.is_occupied
-        ]
-
-        if occupied_beds:
-            occupied_positions = ", ".join(
-                str(bed.position)
-                for bed in occupied_beds
+        protected_positions = ", ".join(
+            str(position)
+            for position in sorted(
+                bed.position for bed in beds if bed.pk in protected_ids
             )
+        )
 
-            raise ConflictError(
-                "The following beds are occupied and cannot be retired: "
-                f"{occupied_positions}. Complete the necessary assignment "
-                "migration first."
-            )
+        raise ConflictError(
+            "The following bed positions have reservations or checked-in "
+            f"students and cannot be retired: {protected_positions}."
+        )
 
     @staticmethod
     def _save_instance(instance, conflict_message):
@@ -575,7 +579,7 @@ class AccommodationMigrationService:
             )
         )
 
-        AccommodationMigrationService._validate_beds_are_unoccupied(
+        AccommodationMigrationService._validate_beds_can_be_retired(
             excess_beds
         )
 
@@ -628,7 +632,7 @@ class AccommodationMigrationService:
 
         # Check occupancy again immediately before retirement.
         # Preparation results may have become stale.
-        AccommodationMigrationService._validate_beds_are_unoccupied(
+        AccommodationMigrationService._validate_beds_can_be_retired(
             expected_beds
         )
 
