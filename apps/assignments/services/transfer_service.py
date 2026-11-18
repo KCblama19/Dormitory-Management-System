@@ -171,7 +171,6 @@ def _validate_destination(source, destination, *, destination_reservation=None):
         not university.is_active
         or not campus.is_active
         or not building.is_active
-        or not floor.is_active
         or floor.status != Floor.FloorStatus.ACTIVE
         or floor.is_restricted
         or destination.status != Bed.Status.AVAILABLE

@@ -237,8 +237,7 @@ class BedService:
         """Prevent bed creation on floors that cannot accept operations."""
 
         if (
-            not floor.is_active
-            or floor.status != Floor.FloorStatus.ACTIVE
+            floor.status != Floor.FloorStatus.ACTIVE
         ):
             raise ConflictError(
                 "Beds cannot be created on an inactive or "

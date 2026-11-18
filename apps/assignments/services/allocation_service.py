@@ -215,7 +215,6 @@ def _lock_room_inventory(building, floor_id, room_id):
     if (
         floor.building_id != building.pk
         or room.floor_id != floor.pk
-        or not floor.is_active
         or floor.status != Floor.FloorStatus.ACTIVE
         or floor.is_restricted
     ):
@@ -264,7 +263,6 @@ def _select_beds(building, students_by_gender, group_size, allow_partial):
     candidates = list(
         Bed.objects.filter(
             room__floor__building_id=building.pk,
-            room__floor__is_active=True,
             room__floor__status=Floor.FloorStatus.ACTIVE,
             room__floor__is_restricted=False,
             status=Bed.Status.AVAILABLE,

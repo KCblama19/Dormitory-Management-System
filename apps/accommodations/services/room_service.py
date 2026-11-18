@@ -436,10 +436,6 @@ class RoomService:
         """
         Ensure that the Floor is operational before creating a Room.
         """
-        if not floor.is_active:
-            raise ValidationError(
-                "Rooms cannot be created on an inactive floor."
-            )
 
         if floor.status != Floor.FloorStatus.ACTIVE:
             raise ValidationError(

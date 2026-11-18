@@ -396,6 +396,16 @@ class CampusService:
                 "Campus cannot be deactivated while it "
                 "has active buildings."
             )
+        
+        from apps.assignments.services.commitment_queries import (
+            campus_has_unresolved_commitments,
+        )
+
+        if campus_has_unresolved_commitments(campus_id=campus.pk):
+            raise ValidationError(
+                "Campus cannot be deactivated while it has unresolved "
+                "accommodation commitments."
+            )
 
         campus.is_active = False
 

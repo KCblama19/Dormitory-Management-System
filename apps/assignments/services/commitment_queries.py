@@ -47,3 +47,49 @@ def committed_bed_ids(*, bed_ids):
         .order_by()
         .values_list("bed_id", flat=True)
     )
+    
+def floor_has_active_assignments(*, floor_id):
+    """Return whether any bed on this floor is reserved or checked in.
+
+    Call this while holding the exclusive floor lock so an allocation
+    cannot reserve a bed between this check and the floor update.
+    """
+    return Assignment.objects.filter(
+        bed__room__floor_id=floor_id,
+        status__in=(
+            Assignment.Status.RESERVED,
+            Assignment.Status.CHECKED_IN,
+        ),
+    ).exists()
+
+
+def building_has_unresolved_commitments(*, building_id):
+    """Check whether the building can be taken out of use.
+
+    Call this while holding the exclusive building lock. A pending
+    transfer can affect the building before a destination bed is reserved.
+    """
+    if Assignment.objects.filter(
+        bed__room__floor__building_id=building_id,
+        status__in=(
+            Assignment.Status.RESERVED,
+            Assignment.Status.CHECKED_IN,
+        ),
+    ).exists():
+        return True
+
+    if (
+        AllocationRequest.objects.unresolved()
+        .filter(building_id=building_id)
+        .exists()
+    ):
+        return True
+
+    return TransferRequest.objects.filter(
+        Q(source_assignment__bed__room__floor__building_id=building_id)
+        | Q(destination_bed__room__floor__building_id=building_id),
+        status__in=(
+            TransferRequest.Status.PENDING,
+            TransferRequest.Status.APPROVED,
+        ),
+    ).exists()
