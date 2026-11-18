@@ -124,6 +124,16 @@ class AllocationRequest(TimeStampModel):
             "the Building's allocation configuration changes."
         ),
     )
+    
+    allow_partial = models.BooleanField(
+        _("Allow partial allocation"),
+        default=False,
+        help_text=_(
+            "The initiating staff member confirmed that the group accepts "
+            "an allocation that reserves beds for only some of its members."
+        ),
+    )
+    
 
     building = models.ForeignKey(
         "accommodation.Building",
@@ -143,6 +153,29 @@ class AllocationRequest(TimeStampModel):
         help_text=_(
             "The current overall state of the allocation operation."
         ),
+    )
+    
+    expected_check_in = models.DateField(
+        _("Expected check-in"),
+        null=True,
+        blank=True,
+    )
+
+    expected_check_out = models.DateField(
+        _("Expected checkout"),
+        null=True,
+        blank=True,
+    )
+
+    check_in_deadline = models.DateField(
+        _("Check-in deadline"),
+        null=True,
+        blank=True,
+    )
+
+    grace_period_days = models.PositiveIntegerField(
+        _("Grace period days"),
+        default=0,
     )
 
     requested_by = models.ForeignKey(
@@ -245,6 +278,11 @@ class AllocationRequest(TimeStampModel):
                     | Q(decided_at__isnull=False)
                 ),
                 name="allocation_req_decision_pair",
+            ),
+
+            models.CheckConstraint(
+                condition=Q(allow_partial=False) | Q(request_type="GROUP"),
+                name="allocation_partial_group_only",
             ),
         ]
 

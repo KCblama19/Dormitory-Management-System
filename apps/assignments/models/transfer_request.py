@@ -232,7 +232,15 @@ class TransferRequest(TimeStampModel):
             # -------------------------------------------------
             models.CheckConstraint(
                 condition=Q(
-                    status__in=["RESERVED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED", "EXPIRED", "TERMINATED"]),
+                    status__in=[
+                        "PENDING",
+                        "APPROVED",
+                        "REJECTED",
+                        "CANCELLED",
+                        "COMPLETED",
+                        "EXPIRED",
+                    ]
+                ),
                 name="transfer_request_status_valid",
             ),
 
@@ -297,7 +305,7 @@ class TransferRequest(TimeStampModel):
             # -------------------------------------------------
             models.CheckConstraint(
                 condition=(
-                    ~Q(status_in=["APPROVED", "EXPIRED"])
+                    ~Q(status__in=["APPROVED", "EXPIRED"])
                     |
                     Q(
                         decided_at__isnull=False,

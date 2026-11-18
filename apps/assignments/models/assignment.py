@@ -128,7 +128,7 @@ class Assignment(TimeStampModel):
         verbose_name=_("expected check-in date"),
         help_text=_(
             "The expected calendar date of the student's arrival, "
-            "interpreted using the University's timezone."
+            "interpreted using the Campus's timezone."
         ),
     )
 
@@ -142,11 +142,13 @@ class Assignment(TimeStampModel):
         ),
     )
 
-    check_in_deadline = models.DateTimeField(
+    check_in_deadline = models.DateField(
         verbose_name=_("check-in deadline"),
         help_text=_(
-            "The final permitted check-in instant, calculated using "
-            "the University's timezone and the stored grace period."
+            help_text=_(
+                "The base check-in deadline in the campus's local calendar. "
+                "The grace period starts after this date."
+            )
         ),
     )
 
@@ -372,8 +374,13 @@ class Assignment(TimeStampModel):
             # -------------------------------------------------
             models.CheckConstraint(
                 condition=Q(
-                    review_status__in=
-                    ["RESERVED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED", "EXPIRED", "TERMINATED"]),
+                    review_status__in=[
+                        "NOT_REQUIRED", 
+                        "PENDING", 
+                        "APPROVED", 
+                        "REJECTED", 
+                    ]
+                ),
                 name="assignment_review_status_valid",
             ),
 
@@ -592,9 +599,9 @@ class Assignment(TimeStampModel):
         Database constraints provide the final protection for
         rules that can be represented at the database level.
 
-        University-timezone deadline calculations remain in the
+        Campus-timezone deadline calculations remain in the
         Assignment services because they require the related
-        University timezone and calendar-day semantics.
+        Campus timezone and calendar-day semantics.
         """
         super().clean()
 
@@ -622,7 +629,6 @@ class Assignment(TimeStampModel):
         if (
             settings.USE_TZ
             and self.check_in_deadline
-            and timezone.is_naive(self.check_in_deadline)
         ):
             errors["check_in_deadline"] = _(
                 "The check-in deadline must be timezone-aware."
