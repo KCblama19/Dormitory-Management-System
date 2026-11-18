@@ -39,7 +39,7 @@ class BasePolicy:
         return (
             cls.is_authenticated(actor)
             and getattr(actor, "is_active", False)
-            and getattr(actor, "accountStatus", None) == "active"
+            and getattr(actor, "accountStatus", None) == "ACTIVE"
         )
 
     @classmethod
@@ -142,25 +142,39 @@ class BasePolicy:
             and managed.pk == building.pk
         )    
             
+    
     @classmethod
     def works_in_building(cls, actor, building):
         """
-        True when the actor is an active staff member assigned to this
-        building.
+        Check whether the actor is authorized to perform
+        operational activities within a specific building.
 
-        This includes Global admin and both:
-        - Building Manager
-        - Building Staff
+        Authorized actors:
+            - Global Admin
+            - Building Manager
+            - Building Staff
+
+        Other staff roles are not automatically granted
+        building-level operational permissions.
+
+        Campus-level roles can be introduced separately
+        when campus management is implemented.
         """
         if cls.is_global_admin(actor):
             return building is not None
-        
+
         if building is None:
             return False
 
         staff = cls.active_staff_profile(actor)
 
         if staff is None:
+            return False
+
+        if getattr(staff, "role", None) not in {
+            "BUILDING_MANAGER",
+            "BUILDING_STAFF",
+        }:
             return False
 
         assigned_building = getattr(staff, "building", None)
