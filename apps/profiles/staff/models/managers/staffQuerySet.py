@@ -12,6 +12,7 @@ class StaffQuerySet(models.QuerySet):
     def active(self):
         return self.filter(
             status="ACTIVE",
+            user__accountStatus="ACTIVE",
             user__is_active=True,
         )
 

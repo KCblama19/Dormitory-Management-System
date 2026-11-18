@@ -9,7 +9,7 @@ from apps.core.abstract_models.timestamp_models import TimeStampModel
 from apps.core.models.gender_model import Gender
 
 # Dormitory Models
-from apps.accommodation.models.building.building_model import Building
+from apps.accommodations.models.building.building_model import Building
 
 
 class Staff(TimeStampModel):

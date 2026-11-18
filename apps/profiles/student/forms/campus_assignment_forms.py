@@ -1,6 +1,6 @@
 from django import forms
 
-from apps.accommodation.models import Campus
+from apps.accommodations.models import Campus
 from apps.profiles.student.models.academic_year import AcademicYear
 from apps.profiles.student.models.student_models import Student
 from apps.profiles.student.models.campus_assignment import StudentAssignCampus

@@ -245,7 +245,7 @@ class StudentService:
         user = student.user
 
         user.is_active = True
-        user.accountStatus = "active"
+        user.accountStatus = "ACTIVE"
 
         user.full_clean()
         user.save(
@@ -277,7 +277,7 @@ class StudentService:
         user = student.user
 
         user.is_active = False
-        user.accountStatus = "locked"
+        user.accountStatus = "LOCKED"
 
         user.full_clean()
         user.save(
@@ -308,7 +308,7 @@ class StudentService:
         user = student.user
 
         user.is_active = False
-        user.accountStatus = "suspended"
+        user.accountStatus = "SUSPENDED"
 
         user.full_clean()
         user.save(
@@ -337,7 +337,7 @@ class StudentService:
                 "this student's account."
             )
             
-        if student.user.accountStatus != "suspended":
+        if student.user.accountStatus != "SUSPENDED":
             raise ConflictError(
                 "Only suspended student accounts can be restored."
             )
@@ -345,7 +345,7 @@ class StudentService:
         user = student.user
 
         user.is_active = True
-        user.accountStatus = "active"
+        user.accountStatus = "ACTIVE"
 
         user.full_clean()
         user.save(

@@ -80,7 +80,7 @@ class StudentQueryset(models.QuerySet):
         produce duplicate rows
         """
         return self.filter(
-            enrollment__enrollment_status="ACTIVE"
+            enrollments__enrollment_status="ACTIVE"
         ).distinct()
         
     def with_active_campus(self):
@@ -89,7 +89,7 @@ class StudentQueryset(models.QuerySet):
         assignment
         """
         return self.filter(
-            campus_assignment__status="ACTIVE"
+            campus_assignments__status="ACTIVE"
         )
         
     def ready_for_accommodation(self):
@@ -114,7 +114,7 @@ class StudentQueryset(models.QuerySet):
             .admitted()
             .eligible()
             .with_active_enrollment()
-            .with_active_campus
+            .with_active_campus()
         )
         
     def for_campus(self, campus):
@@ -126,7 +126,7 @@ class StudentQueryset(models.QuerySet):
         
         return self.filter(
             campus_assignments__campus_id=campus_id,
-            campus_assignment_status="ACTIVE",
+            campus_assignments_status="ACTIVE",
         ).distinct()
         
     def for_academic_year(self, academic_year):
@@ -137,8 +137,8 @@ class StudentQueryset(models.QuerySet):
         academic_year_id = getattr(academic_year, "pk", academic_year)
         
         return self.filter(
-            campus_assignment_academic_year_id=academic_year_id,
-            campus_assignment__status="ACTIVE",
+            campus_assignments_academic_year_id=academic_year_id,
+            campus_assignments__status="ACTIVE",
         )
         
     def search(self, term):

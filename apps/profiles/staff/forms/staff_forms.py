@@ -1,7 +1,7 @@
 from django import forms
 
 # MODELS
-from apps.accommodation.models import Building
+from apps.accommodations.models import Building
 from apps.profiles.staff.models.staff_models import Staff
 
 # SHARE UTILITY FORMS
