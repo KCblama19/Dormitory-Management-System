@@ -15,7 +15,7 @@ class AssignmentExtension(TimeStampModel):
         REJECTED = "REJECTED", _("Rejected")
 
     assignment = models.ForeignKey(
-        "Assignment",
+        "assignments.Assignment",
         on_delete=models.PROTECT,
         related_name="extensions",
     )

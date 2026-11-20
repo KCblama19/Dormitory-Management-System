@@ -32,7 +32,7 @@ class Room(TimeStampModel):
     """
 
     floor = models.ForeignKey(
-        "accommodation.Floor",
+        "accommodations.Floor",
         on_delete=models.PROTECT,
         related_name="rooms",
         verbose_name=_("floor"),
@@ -50,7 +50,7 @@ class Room(TimeStampModel):
     # A room can override the bed configuration inherited from its floor.
     # When this is NULL, the floor's effective configuration is used.
     bed_configuration_override = models.ForeignKey(
-        "accommodation.BedConfiguration",
+        "accommodations.BedConfiguration",
         on_delete=models.PROTECT,
         null=True,
         blank=True,

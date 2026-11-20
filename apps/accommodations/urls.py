@@ -23,11 +23,11 @@ from apps.accommodations.views.building.operational_views import (
     BuildingActivateView,
     BuildingDeactivateView,
 )
-from apps.accommodations.views.building.configuration_views import (
-    BuildingGenderPolicyChangeView,
-    BuildingPopulationChangeView,
-    BuildingDefaultBedConfigurationChangeView,
-)
+# from apps.accommodations.views.building.configuration_views import (
+#     BuildingGenderPolicyChangeView,
+#     BuildingPopulationChangeView,
+#     BuildingDefaultBedConfigurationChangeView,
+# )
 
 # -----------------------
 # FLOOR IMPORTS
@@ -161,21 +161,21 @@ urlpatterns = [
         BuildingDeactivateView.as_view(),
         name="building-deactivate",
     ),
-    path(
-        "buildings/<int:pk>/change-gender-policy/",
-        BuildingGenderPolicyChangeView.as_view(),
-        name="building-change-gender-policy",
-    ),
-    path(
-        "buildings/<int:pk>/change-population/",
-        BuildingPopulationChangeView.as_view(),
-        name="building-change-population",
-    ),
-    path(
-        "buildings/<int:pk>/change-default-bed-configuration/",
-        BuildingDefaultBedConfigurationChangeView.as_view(),
-        name="building-change-default-bed-configuration",
-    ),
+    # path(
+    #     "buildings/<int:pk>/change-gender-policy/",
+    #     BuildingGenderPolicyChangeView.as_view(),
+    #     name="building-change-gender-policy",
+    # ),
+    # path(
+    #     "buildings/<int:pk>/change-population/",
+    #     BuildingPopulationChangeView.as_view(),
+    #     name="building-change-population",
+    # ),
+    # path(
+    #     "buildings/<int:pk>/change-default-bed-configuration/",
+    #     BuildingDefaultBedConfigurationChangeView.as_view(),
+    #     name="building-change-default-bed-configuration",
+    # ),
 
     # -----------------------
     # FLOOR ROUTES

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 
 class AllocationRequestQuerySet(models.QuerySet):
@@ -50,18 +51,19 @@ class AllocationRequestQuerySet(models.QuerySet):
         )
 
     def unresolved(self):
-        """
-        Return requests that have not reached a final outcome.
-
-        PARTIALLY_ALLOCATED represents a final partial outcome,
-        not an unfinished request.
-        """
+        """Return requests that still have allocation work to resolve."""
         return self.filter(
-            status__in=[
-                self.model.Status.PENDING,
-                self.model.Status.AWAITING_CONFIRMATION,
-            ]
-        )
+            Q(
+                status__in=(
+                    self.model.Status.PENDING,
+                    self.model.Status.AWAITING_CONFIRMATION,
+                ),
+            )
+            | Q(
+                status=self.model.Status.PARTIALLY_ALLOCATED,
+                members__status__in=("PENDING", "AWAITING_CONFIRMATION"),
+            )
+        ).distinct()
 
     # ---------------------------------------------------------
     # RELATIONSHIP FILTERS

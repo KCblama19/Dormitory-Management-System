@@ -21,7 +21,7 @@ class Floor(TimeStampModel):
         MAINTENANCE = "MAINTENANCE", _("Maintenance")
                 
     building = models.ForeignKey(
-        "accommodation.Building",
+        "accommodations.Building",
         on_delete=models.PROTECT,
         related_name="floors",
         verbose_name=_("building"),
@@ -46,7 +46,7 @@ class Floor(TimeStampModel):
         ),
     )
     bed_configuration_override = models.ForeignKey(
-        "accommodation.BedConfiguration",
+        "accommodations.BedConfiguration",
         on_delete=models.PROTECT,
         related_name="floor_overrides",
         verbose_name=_("bed configuration override"),

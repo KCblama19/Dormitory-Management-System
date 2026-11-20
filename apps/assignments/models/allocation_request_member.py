@@ -92,7 +92,7 @@ class AllocationRequestMember(TimeStampModel):
     )
 
     allocation_request = models.ForeignKey(
-        "assignment.AllocationRequest",
+        "assignments.AllocationRequest",
         on_delete=models.PROTECT,
         related_name="members",
         verbose_name=_("allocation request"),
@@ -122,7 +122,7 @@ class AllocationRequestMember(TimeStampModel):
     )
 
     assigned_bed = models.ForeignKey(
-        "accommodation.Bed",
+        "accommodations.Bed",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -231,11 +231,11 @@ class AllocationRequestMember(TimeStampModel):
         indexes = [
             models.Index(
                 fields=["allocation_request", "status"],
-                name="alloc_member_req_status_idx",
+                name="alloc_member_req_status_id",
             ),
             models.Index(
                 fields=["student", "status"],
-                name="alloc_member_student_status_idx",
+                name="alloc_member_student_status_id",
             ),
         ]
 

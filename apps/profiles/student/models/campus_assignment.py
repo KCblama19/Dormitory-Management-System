@@ -43,7 +43,7 @@ class StudentAssignCampus(TimeStampModel):
         related_name="campus_assignments"
     )
     campus = models.ForeignKey(
-        "accommodation.Campus",
+        "accommodations.Campus",
         on_delete=models.PROTECT,
         related_name="student_assignments"
     )

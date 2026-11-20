@@ -2,7 +2,7 @@ from django.shortcuts import redirect, render
 
 from apps.accommodations.forms.floor_forms import CreateFloorForm
 from apps.accommodations.services.floor_service import FloorService
-from apps.accommodation.views.building.base import BuildingBaseView
+from apps.accommodations.views.base import BuildingBaseView
 
 from apps.core.exceptions import DomainError, PermissionDenied
 from apps.core.policies import AccommodationPolicy

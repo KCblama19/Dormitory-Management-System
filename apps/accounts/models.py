@@ -166,9 +166,9 @@ class User(AbstractUser):
 
         Helps with admin panel, logs, and debugging.
         """
-        if self.role == self.UserType.STUDENT:
+        if self.role == self.AccountType.STUDENT:
             return f"Student ({self.student_id})"
-        if self.role == self.UserType.STAFF:
+        if self.role == self.AccountType.STAFF:
             return f"Staff {self.staff_id} ({self.email})"
         
         return f"Admin {self.staff_id} ({self.email})"
@@ -177,13 +177,13 @@ class User(AbstractUser):
     # Return True or False based on the user role 
     @property
     def is_student(self):
-        return self.account_type == self.UserType.STUDENT
+        return self.account_type == self.AccountType.STUDENT
     @property
     def is_staff_member(self):
-        return self.account_type == self.UserType.STAFF
+        return self.account_type == self.AccountType.STAFF
     @property
     def is_admin_user(self):
-        return self.account_type == self.UserType.ADMIN
+        return self.account_type == self.AccountType.ADMIN
     
     @property
     def primary_identifier(self):

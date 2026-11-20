@@ -75,7 +75,7 @@ class Assignment(TimeStampModel):
     )
 
     bed = models.ForeignKey(
-        "accommodation.Bed",
+        "accommodations.Bed",
         on_delete=models.PROTECT,
         related_name="assignments",
         verbose_name=_("bed"),
@@ -85,7 +85,7 @@ class Assignment(TimeStampModel):
     )
 
     allocation_member = models.OneToOneField(
-        "assignment.AllocationRequestMember",
+        "assignments.AllocationRequestMember",
         on_delete=models.PROTECT,
         related_name="assignment",
         null=True,
@@ -98,7 +98,7 @@ class Assignment(TimeStampModel):
     )
 
     transfer_request = models.OneToOneField(
-        "assignment.TransferRequest",
+        "assignments.TransferRequest",
         on_delete=models.PROTECT,
         related_name="destination_assignment",
         null=True,

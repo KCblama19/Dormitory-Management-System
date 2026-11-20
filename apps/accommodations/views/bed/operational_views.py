@@ -1,9 +1,9 @@
 
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.accommodations.forms.bed_forms import (
-    BedStatusOperationForm,
-)
+# from apps.accommodations.forms.bed_forms import (
+#     BedStatusOperationForm,
+# )
 from apps.accommodations.models.bed.bed_model import Bed
 from apps.accommodations.services.bed_service import BedService
 from apps.accommodations.views.base import BuildingBaseView
@@ -21,7 +21,7 @@ class BedOperationBaseView(BuildingBaseView):
     """
 
     template_name = "accommodation/bed/bed_confirm_operation.html"
-    form_class = BedStatusOperationForm
+    # form_class = BedStatusOperationForm
 
     operation_label = None
     success_message = None

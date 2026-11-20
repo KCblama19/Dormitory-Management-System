@@ -5,6 +5,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 # MODELS
 from apps.profiles.student.models.student_models import Student
 
+# Database locking
+from apps.core.db.locking import get_locked_instance
+
 # POLICIES
 from apps.core.policies import StudentPolicy
 
@@ -12,6 +15,7 @@ from apps.core.policies import StudentPolicy
 from apps.core.exceptions import (
     ValidationError,
     ConflictError,
+    NotFoundError,
     PermissionDenied,
 )
 
@@ -21,6 +25,45 @@ class StudentService:
     Service layer to handle business logic and mutations
     for user with Student profile.
     """
+
+    @staticmethod
+    def _get_locked_student(student: Student) -> Student:
+        """Reload the profile under the same row lock used by allocation."""
+        try:
+            return get_locked_instance(Student, student.pk, mode="exclusive")
+        except Student.DoesNotExist as exc:
+            raise NotFoundError("The requested student could not be found.") from exc
+
+    @staticmethod
+    def _is_housing_eligible(student: Student) -> bool:
+        """Check the admission and housing statuses required for accommodation."""
+        return (
+            student.admission_status == Student.AdmissionStatus.ACCEPTED
+            and student.eligibility_status == Student.EligibilityStatus.ELIGIBLE
+        )
+
+    @staticmethod
+    def _save_housing_status(student: Student, *, field: str, value: str) -> Student:
+        """Save a status change and flag assignments when eligibility is lost.
+
+        The caller holds the exclusive Student lock inside its transaction.
+        The same transaction saves the new profile status and opens the
+        assignment review, so both changes roll back if either one fails.
+        """
+        was_eligible = StudentService._is_housing_eligible(student)
+
+        setattr(student, field, value)
+        student.full_clean()
+        student.save(update_fields=[field])
+
+        # Repeated saves of an ineligible status should not reopen a review
+        # that the building manager has already decided.
+        if was_eligible and not StudentService._is_housing_eligible(student):
+            from apps.assignments.services.assignment_service import AssignmentService
+
+            AssignmentService.flag_eligibility_review(student=student)
+
+        return student
     
     @staticmethod
     @transaction.atomic
@@ -113,6 +156,8 @@ class StudentService:
                 "this student."
             )
             
+        student = StudentService._get_locked_student(student)
+
         if student.admission_status == Student.AdmissionStatus.ACCEPTED:
             raise ConflictError(
                 "Student has already been accepted."
@@ -126,11 +171,9 @@ class StudentService:
                 "A rejected or withdrawn student cannot be directly accepted."
             )
 
-        student.admission_status = Student.AdmissionStatus.ACCEPTED
-        student.full_clean()
-        student.save(update_fields=["admission_status"])
-
-        return student
+        return StudentService._save_housing_status(
+            student, field="admission_status", value=Student.AdmissionStatus.ACCEPTED,
+        )
 
     @staticmethod
     @transaction.atomic
@@ -142,6 +185,8 @@ class StudentService:
         """
         Rejects a student application.
         """
+
+        student = StudentService._get_locked_student(student)
         
         if not StudentPolicy.can_reject_student(
             actor, student,
@@ -156,11 +201,9 @@ class StudentService:
                 "An accepted student cannot be rejected directly."
             )
 
-        student.admission_status = Student.AdmissionStatus.REJECTED
-        student.full_clean()
-        student.save(update_fields=["admission_status"])
-
-        return student
+        return StudentService._save_housing_status(
+            student, field="admission_status", value=Student.AdmissionStatus.REJECTED,
+        )
 
     @staticmethod
     @transaction.atomic
@@ -180,28 +223,28 @@ class StudentService:
                 "withdraw this student"
             )
         
+        student = StudentService._get_locked_student(student)
+
         if student.admission_status == Student.AdmissionStatus.REJECTED:
             raise ConflictError(
                 "A rejected student cannot be withdrawn."
             )
 
-        student.admission_status = Student.AdmissionStatus.WITHDRAWN
-        student.full_clean()
-        student.save(update_fields=["admission_status"])
-
-        return student
+        return StudentService._save_housing_status(
+            student, field="admission_status", value=Student.AdmissionStatus.WITHDRAWN,
+        )
 
     @staticmethod
     @transaction.atomic
     def set_eligibility(
         *, 
-        actor: str, 
+        actor: Any,
         student: Student, 
         eligibility_status: str
     ) -> Student:
-        """"
-        Updates a student's accommodation eligibility status
-        """
+        """Update the student's accommodation eligibility status."""
+        student = StudentService._get_locked_student(student)
+
         if not StudentPolicy.can_set_eligibility(
             actor,
             student,
@@ -221,11 +264,9 @@ class StudentService:
                 f"Invalid eligibility status: {eligibility_status}"
             )
 
-        student.eligibility_status = eligibility_status
-        student.full_clean()
-        student.save(update_fields=["eligibility_status"])
-
-        return student
+        return StudentService._save_housing_status(
+            student, field="eligibility_status", value=eligibility_status,
+        )
 
     @staticmethod
     @transaction.atomic

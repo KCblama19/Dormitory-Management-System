@@ -3,9 +3,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accommodations.models.floor.floor_model import Floor
 from apps.accommodations.services.floor_service import FloorService
-from apps.accommodation.views.building.base import BuildingBaseView
+from apps.accommodations.views.base import BuildingBaseView
 
-from apps.accommodation.forms.floor.floor_forms import (
+from apps.accommodations.forms.floor_forms import (
     FloorRestrictionForm,
     FloorBedConfigurationForm,
 )

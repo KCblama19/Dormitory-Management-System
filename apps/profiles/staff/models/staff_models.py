@@ -72,7 +72,7 @@ class Staff(TimeStampModel):
         related_name="staffs"
     )
     building = models.ForeignKey(
-        "accommodation.Building",
+        "accommodations.Building",
         on_delete=models.PROTECT,
         related_name="staff_members",
         verbose_name=_("building"),

@@ -37,7 +37,7 @@ class Bed(TimeStampModel):
         RETIRED = "RETIRED", _("Retired")
 
     room = models.ForeignKey(
-        "accommodation.Room",
+        "accommodations.Room",
         on_delete=models.PROTECT,
         related_name="beds",
         verbose_name=_("room"),

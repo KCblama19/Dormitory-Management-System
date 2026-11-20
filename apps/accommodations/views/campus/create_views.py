@@ -86,4 +86,4 @@ class CampusCreateView(AccommodationBaseView):
             "Campus created successfully.",
         )
 
-        return redirect("accommodation:campus-list")
+        return redirect("accommodations:campus-list")

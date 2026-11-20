@@ -1,11 +1,11 @@
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.accommodation.forms.room.room_forms import (
+from apps.accommodations.forms.room_forms import (
     RoomBedConfigurationForm,
 )
 from apps.accommodations.models.room.room_model import Room
 from apps.accommodations.services.room_service import RoomService
-from apps.accommodation.views.building.base import BuildingBaseView
+from apps.accommodations.views.base import BuildingBaseView
 
 from apps.core.exceptions import DomainError, PermissionDenied
 from apps.core.policies import AccommodationPolicy

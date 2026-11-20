@@ -54,7 +54,7 @@ class TransferRequest(TimeStampModel):
     # =========================================================
 
     source_assignment = models.ForeignKey(
-        "assignment.Assignment",
+        "assignments.Assignment",
         on_delete=models.PROTECT,
         related_name="transfer_requests",
         verbose_name=_("source assignment"),
@@ -64,7 +64,7 @@ class TransferRequest(TimeStampModel):
     )
 
     destination_bed = models.ForeignKey(
-        "accommodation.Bed",
+        "accommodations.Bed",
         on_delete=models.PROTECT,
         related_name="destination_transfer_requests",
         verbose_name=_("destination bed"),
@@ -222,7 +222,7 @@ class TransferRequest(TimeStampModel):
             ),
             models.Index(
                 fields=["destination_bed", "status"],
-                name="transfer_destination_status_idx",
+                name="transfer_destination_status_id",
             ),
         ]
 

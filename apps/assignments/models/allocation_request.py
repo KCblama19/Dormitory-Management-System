@@ -136,7 +136,7 @@ class AllocationRequest(TimeStampModel):
     
 
     building = models.ForeignKey(
-        "accommodation.Building",
+        "accommodations.Building",
         on_delete=models.PROTECT,
         related_name="allocation_requests",
         verbose_name=_("building"),
