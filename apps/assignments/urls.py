@@ -1,0 +1,188 @@
+from django.urls import path
+
+from apps.assignments.views.views import (
+    AssignmentCheckInView,
+    AssignmentDetailView,
+    AutomaticAllocationView,
+    ReservationCancellationView,
+    AssignmentExtensionRequestView,
+    AssignmentExtensionDecisionView,
+    CheckoutRequestView,
+    CheckoutDecisionView,
+    AssignmentEligibilityDecisionView,
+    AssignmentTerminationView,
+    AssignmentListView,
+)
+
+# TRANSFER URLS
+from apps.assignments.views.transfer_views import (
+    TransferCancellationRequestView,
+    TransferCancellationView,
+    TransferCompletionView,
+    TransferDecisionView,
+    TransferRequestView,
+)
+
+# ALLOCATION URLS
+from apps.assignments.views.allocation_views import (
+    AllocationRequestDetailView,
+    AllocationRequestListView,
+    RecommendedAllocationPreparationView,
+    RecommendedAllocationConfirmationView,
+    RecommendedAllocationRefreshView,
+    ManualAllocationPreparationView,
+    ManualAllocationRevisionView,
+    ManualAllocationApprovalView,
+    AutomaticGroupAllocationView,
+    AllocationMemberWithdrawView,
+    AllocationRequestCancelView,
+    AllocationRequestRejectView,
+    
+)
+
+
+app_name = "assignments"
+
+urlpatterns = [
+    path(
+        "allocations/automatic/",
+        AutomaticAllocationView.as_view(),
+        name="automatic-allocation",
+    ),
+    path(
+        "<uuid:assignment_id>/",
+        AssignmentDetailView.as_view(),
+        name="assignment-detail",
+    ),
+    path(
+        "<uuid:assignment_id>/check-in/",
+        AssignmentCheckInView.as_view(),
+        name="assignment-check-in",
+    ),
+    path(
+        "<uuid:assignment_id>/cancel/",
+        ReservationCancellationView.as_view(),
+        name="reservation-cancel",
+    ),
+        path(
+        "<uuid:assignment_id>/extensions/request/",
+        AssignmentExtensionRequestView.as_view(),
+        name="extension-request",
+    ),
+    path(
+        "<uuid:assignment_id>/extensions/<str:request_id>/decide/",
+        AssignmentExtensionDecisionView.as_view(),
+        name="extension-decide",
+    ),
+    path(
+        "<uuid:assignment_id>/checkout/request/",
+        CheckoutRequestView.as_view(),
+        name="checkout-request",
+    ),
+    path(
+        "<uuid:assignment_id>/checkout/<str:request_id>/decide/",
+        CheckoutDecisionView.as_view(),
+        name="checkout-decide",
+    ),
+        path(
+        "<uuid:assignment_id>/transfers/request/",
+        TransferRequestView.as_view(),
+        name="transfer-request",
+    ),
+    path(
+        "<uuid:assignment_id>/transfers/<uuid:request_id>/decide/",
+        TransferDecisionView.as_view(),
+        name="transfer-decide",
+    ),
+    path(
+        "<uuid:assignment_id>/transfers/<uuid:request_id>/complete/",
+        TransferCompletionView.as_view(),
+        name="transfer-complete",
+    ),
+    path(
+        "<uuid:assignment_id>/transfers/<uuid:request_id>/request-cancellation/",
+        TransferCancellationRequestView.as_view(),
+        name="transfer-cancellation-request",
+    ),
+    path(
+        "<uuid:assignment_id>/transfers/<uuid:request_id>/cancel/",
+        TransferCancellationView.as_view(),
+        name="transfer-cancel",
+    ),
+    
+        path(
+        "<uuid:assignment_id>/eligibility/decide/",
+        AssignmentEligibilityDecisionView.as_view(),
+        name="eligibility-decide",
+    ),
+    path(
+        "<uuid:assignment_id>/terminate/",
+        AssignmentTerminationView.as_view(),
+        name="assignment-terminate",
+    ),
+        path(
+        "allocations/",
+        AllocationRequestListView.as_view(),
+        name="allocation-request-list",
+    ),
+    path(
+        "allocations/<uuid:request_id>/",
+        AllocationRequestDetailView.as_view(),
+        name="allocation-request-detail",
+    ),
+        path(
+        "allocations/automatic/group/",
+        AutomaticGroupAllocationView.as_view(),
+        name="automatic-group-allocation",
+    ),
+    path(
+        "allocations/recommended/prepare/",
+        RecommendedAllocationPreparationView.as_view(),
+        name="recommended-allocation-prepare",
+    ),
+    path(
+        "allocations/manual/prepare/",
+        ManualAllocationPreparationView.as_view(),
+        name="manual-allocation-prepare",
+    ),
+        path(
+        "allocations/<uuid:request_id>/recommended/refresh/",
+        RecommendedAllocationRefreshView.as_view(),
+        name="recommended-allocation-refresh",
+    ),
+    path(
+        "allocations/<uuid:request_id>/recommended/confirm/",
+        RecommendedAllocationConfirmationView.as_view(),
+        name="recommended-allocation-confirm",
+    ),
+    path(
+        "allocations/<uuid:request_id>/manual/revise/",
+        ManualAllocationRevisionView.as_view(),
+        name="manual-allocation-revise",
+    ),
+    path(
+        "allocations/<uuid:request_id>/manual/approve/",
+        ManualAllocationApprovalView.as_view(),
+        name="manual-allocation-approve",
+    ),
+        path(
+        "allocations/<uuid:request_id>/reject/",
+        AllocationRequestRejectView.as_view(),
+        name="allocation-request-reject",
+    ),
+    path(
+        "allocations/<uuid:request_id>/cancel/",
+        AllocationRequestCancelView.as_view(),
+        name="allocation-request-cancel",
+    ),
+    path(
+        "allocations/<uuid:request_id>/members/<uuid:member_id>/withdraw/",
+        AllocationMemberWithdrawView.as_view(),
+        name="allocation-member-withdraw",
+    ),
+        path(
+        "",
+        AssignmentListView.as_view(),
+        name="assignment-list",
+    ),
+]
